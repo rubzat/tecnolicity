@@ -10,3 +10,4 @@ export {
   contractAmountTipoEnum,
 } from './contract-amounts';
 export { documents, documentEstatusEnum } from './documents';
+export { vigenteProcedures } from './vigente-procedures';
