@@ -1,0 +1,232 @@
+/**
+ * Frontend DTO types.
+ *
+ * These mirror the EXACT response shapes returned by the backend REST API
+ * (see apps/backend/src/domain/repositories/procedure-query-repository.ts).
+ * The API contract — not the DB schema — is the source of truth here.
+ *
+ * Conventions:
+ * - Field names are snake_case (matches the JSON wire format).
+ * - Dates are ISO strings (the backend's `Date` objects JSON-serialize to ISO).
+ * - Amounts are numbers (backend already parses numeric(18,2) → number).
+ */
+
+// --- Pagination ---
+
+export interface PaginationMeta {
+  page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
+}
+
+// --- List item (GET /procedures) ---
+
+export interface InstitucionRef {
+  nombre: string;
+  clave: string;
+  siglas: string | null;
+}
+
+export interface UnidadCompradoraRef {
+  nombre: string;
+  clave: string;
+}
+
+export interface ProcedureListItem {
+  id: number;
+  numero_procedimiento: string;
+  descripcion: string | null;
+  caracter: string | null;
+  tipo_contratacion: string | null;
+  tipo_procedimiento: string | null;
+  ley: string | null;
+  estatus: string | null;
+  fecha_publicacion: string | null;
+  fecha_apertura: string | null;
+  fecha_fallo: string | null;
+  importe_total: number;
+  institucion: InstitucionRef;
+  unidad_compradora: UnidadCompradoraRef;
+}
+
+export interface ProcedureListPage {
+  data: ProcedureListItem[];
+  pagination: PaginationMeta;
+}
+
+// --- Detail (GET /procedures/:numeroProcedimiento) ---
+
+export interface InstitutionView {
+  clave: string;
+  nombre: string;
+  siglas: string | null;
+  orden_gobierno: string | null;
+  clave_ramo: string | null;
+  descripcion_ramo: string | null;
+}
+
+export interface PurchasingUnitView {
+  clave: string;
+  nombre: string;
+}
+
+export interface ExpedienteView {
+  codigo_expediente: string | null;
+  referencia: string | null;
+  titulo: string | null;
+  partida_especifica: string | null;
+}
+
+export interface AmountView {
+  tipo: 'original' | 'convenio';
+  monto_sin_imp_min: number | null;
+  monto_con_imp_min: number | null;
+  monto_sin_imp_max: number | null;
+  monto_con_imp_max: number | null;
+  moneda: string;
+  codigo_ref: string | null;
+  fecha_fin_convenio: string | null;
+}
+
+export interface SupplierView {
+  rfc: string;
+  nombre: string;
+  folio_rupc: string | null;
+  pais: string | null;
+  estratificacion: string | null;
+}
+
+export interface ContractView {
+  id: number;
+  codigo_contrato: string | null;
+  numero_contrato: string | null;
+  titulo: string | null;
+  descripcion: string | null;
+  importe_drc: number | null;
+  moneda: string;
+  estatus_drc: string | null;
+  tipo_contrato: string | null;
+  contrato_plurianual: boolean | null;
+  convenio_modificatorio: boolean | null;
+  fecha_inicio: string | null;
+  fecha_fin: string | null;
+  fecha_firma: string | null;
+  supplier: SupplierView | null;
+  amounts: AmountView[];
+}
+
+export interface ProcedureDetail {
+  id: number;
+  numero_procedimiento: string;
+  descripcion: string | null;
+  caracter: string | null;
+  tipo_contratacion: string | null;
+  tipo_procedimiento: string | null;
+  ley: string | null;
+  estatus: string | null;
+  forma_participacion: string | null;
+  fecha_publicacion: string | null;
+  fecha_apertura: string | null;
+  fecha_fallo: string | null;
+  direccion_anuncio: string | null;
+  contrato_marco: boolean | null;
+  compra_consolidada: boolean | null;
+  credito_externo: boolean | null;
+  institucion: InstitutionView;
+  unidad_compradora: PurchasingUnitView;
+  expedientes: ExpedienteView[];
+  contracts: ContractView[];
+}
+
+// --- Analytics ---
+
+export interface DistribucionMontos {
+  menor_100k: number;
+  entre_100k_1m: number;
+  entre_1m_10m: number;
+  mayor_10m: number;
+}
+
+export interface EstatusGroup {
+  estatus: string | null;
+  total: number;
+}
+
+export interface AnalyticsSummary {
+  total_monto: number;
+  total_procedimientos: number;
+  total_contratos: number;
+  monto_promedio: number;
+  distribucion_montos: DistribucionMontos;
+  por_estatus: EstatusGroup[];
+}
+
+export interface InstitucionGroup {
+  clave: string;
+  nombre: string;
+  siglas: string | null;
+  total_monto: number;
+  total_procedimientos: number;
+  total_contratos: number;
+}
+
+export interface TipoGroup {
+  clave: string | null;
+  total_monto: number;
+  total_procedimientos: number;
+  total_contratos: number;
+}
+
+export interface SupplierGroup {
+  rfc: string;
+  nombre: string;
+  total_monto: number;
+  total_contratos: number;
+}
+
+export interface TipoContratacionResult {
+  por_tipo_contratacion: TipoGroup[];
+  por_tipo_procedimiento: TipoGroup[];
+}
+
+// --- Filter params (matches shared procedureFilterSchema) ---
+
+export interface ProcedureFilter {
+  institucion?: string;
+  tipo_contratacion?: string;
+  tipo_procedimiento?: string;
+  estatus?: string;
+  proveedor?: string;
+  ley?: string;
+  monto_min?: number;
+  monto_max?: number;
+  fecha_desde?: string;
+  fecha_hasta?: string;
+  q?: string;
+}
+
+export type SortField =
+  | 'fecha_publicacion'
+  | 'fecha_apertura'
+  | 'numero_procedimiento'
+  | 'tipo_contratacion'
+  | 'estatus'
+  | 'importe_total';
+
+export type SortOrder = 'asc' | 'desc';
+
+export interface ProcedureListQuery extends ProcedureFilter {
+  page: number;
+  page_size: number;
+  sort: SortField;
+  order: SortOrder;
+}
+
+// --- API error ---
+
+export interface ApiErrorBody {
+  error?: string;
+  message?: string;
+  issues?: { path: string; message: string }[];
+}
