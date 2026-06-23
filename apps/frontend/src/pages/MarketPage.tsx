@@ -19,6 +19,7 @@ import {
   useMarketOpportunities,
   useMarketExpiring,
   useMarketDominance,
+  useVigentes,
 } from '../api/queries';
 import { formatCurrency, formatCurrencyCompact, formatNumber, formatDate } from '../utils/format';
 import type {
@@ -27,6 +28,7 @@ import type {
   MarketOpportunity,
   MarketExpiringContract,
   MarketDominance,
+  VigenteItem,
 } from '../types';
 
 const CHART_HEIGHT = 300;
@@ -50,6 +52,15 @@ export function MarketPage() {
   const opportunities = useMarketOpportunities(committed, true, 1, 20);
   const expiring = useMarketExpiring(committed, true, 6, 20);
   const dominance = useMarketDominance(committed, true, 10);
+
+  // Vigente procedures currently open on ComprasMX, filtered to this segment's
+  // keywords. Independent of the historical `opportunities` snapshot above:
+  // these are bids you can STILL submit to right now.
+  const vigentes = useVigentes({
+    page: 1,
+    page_size: 10,
+    q: committed.length > 0 ? committed.join(' ') : undefined,
+  });
 
   const hasError =
     overview.isError ||
@@ -186,11 +197,25 @@ export function MarketPage() {
         </div>
       </Card>
 
-      {/* ── Oportunidades ── */}
+      {/* ── Oportunidades ACTUALMENTE abiertas (vigentes en vivo) ── */}
+      <Card>
+        <CardHeader
+          title="Oportunidades actualmente abiertas"
+          subtitle="Procedimientos ACTUALMENTE abiertos para licitar en ComprasMX (vigentes en vivo)"
+          action={
+            <Link to="/oportunidades" className="text-xs font-medium text-institucional hover:underline">
+              Ver todas →
+            </Link>
+          }
+        />
+        <VigenteOpportunitiesTable loading={vigentes.isLoading} rows={vigentes.data?.data ?? []} />
+      </Card>
+
+      {/* ── Oportunidades (histórico reciente) ── */}
       <Card>
         <CardHeader
           title="Oportunidades"
-          subtitle="Procedimientos abiertos recientemente (últimos 90 días) en el segmento"
+          subtitle="Procedimientos abiertos recientemente (últimos 90 días) en el segmento — vista histórica"
         />
         <OpportunitiesTable loading={opportunities.isLoading} rows={opportunities.data?.data ?? []} />
       </Card>
@@ -428,6 +453,96 @@ function OpportunitiesTable({ loading, rows }: { loading: boolean; rows: MarketO
             </Td>
           </tr>
         ))}
+      </tbody>
+    </TableWrap>
+  );
+}
+
+// ─── Vigente (currently-open) opportunities table ──────────────────────────
+
+/** Whole days from now until an ISO deadline (negative if past, null if none). */
+function daysUntilDeadline(iso: string | null): number | null {
+  if (!iso) return null;
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return null;
+  return Math.ceil((t - Date.now()) / 86_400_000);
+}
+
+function vigenteUrgencyClass(days: number | null): string {
+  if (days === null) return 'bg-slate-100 text-slate-600 ring-slate-200';
+  if (days < 0) return 'bg-slate-100 text-slate-500 ring-slate-200';
+  if (days < 7) return 'bg-red-50 text-red-700 ring-red-200'; // < 7 days: hot
+  if (days < 30) return 'bg-amber-50 text-amber-700 ring-amber-200'; // < 30 days
+  return 'bg-emerald-50 text-emerald-700 ring-emerald-200'; // > 30 days
+}
+
+function vigenteDeadlineLabel(days: number | null): string {
+  if (days === null) return 'Sin fecha';
+  if (days < 0) return 'Cerrado';
+  if (days === 0) return 'Hoy';
+  if (days === 1) return 'Mañana';
+  return `${days} días`;
+}
+
+function VigenteOpportunitiesTable({ loading, rows }: { loading: boolean; rows: VigenteItem[] }) {
+  if (loading) return <TableSkeleton cols={4} />;
+  if (rows.length === 0)
+    return (
+      <EmptyState
+        title="Sin oportunidades vigentes"
+        hint="No hay procedimientos abiertos para licitar que coincidan con este segmento."
+      />
+    );
+  return (
+    <TableWrap>
+      <thead className="bg-slate-50">
+        <tr>
+          <Th>Procedimiento</Th>
+          <Th>Dependencia</Th>
+          <Th>Tipo</Th>
+          <Th>Cierre</Th>
+          <Th right>Días</Th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-slate-100">
+        {rows.map((r) => {
+          const days = daysUntilDeadline(r.fecha_presentacion_apertura);
+          return (
+            <tr key={r.id} className="hover:bg-slate-50">
+              <Td>
+                {r.direcciones_anuncio ? (
+                  <a
+                    href={r.direcciones_anuncio}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="font-medium text-institucional hover:underline"
+                  >
+                    {r.numero_procedimiento} ↗
+                  </a>
+                ) : (
+                  <span className="font-medium text-slate-700">{r.numero_procedimiento}</span>
+                )}
+                <div className="text-xs text-slate-400">{truncate(r.nombre ?? '', 60)}</div>
+              </Td>
+              <Td>
+                <Badge tone="info">{r.siglas_dependencia ?? '—'}</Badge>
+              </Td>
+              <Td>
+                <span className="text-xs text-slate-600">{r.tipo_contratacion ?? '—'}</span>
+              </Td>
+              <Td>
+                <span className="text-xs text-slate-600">{formatDate(r.fecha_presentacion_apertura)}</span>
+              </Td>
+              <Td right>
+                <span
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${vigenteUrgencyClass(days)}`}
+                >
+                  {vigenteDeadlineLabel(days)}
+                </span>
+              </Td>
+            </tr>
+          );
+        })}
       </tbody>
     </TableWrap>
   );
