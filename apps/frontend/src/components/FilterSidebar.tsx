@@ -4,36 +4,45 @@ import { Button } from './ui';
 import type { ProcedureFilter } from '../types';
 
 /**
- * Hardcoded option lists for the dropdowns. Values are the most common ones
- * observed in Compras MX data; the underlying columns are free-text so the
- * API also accepts arbitrary values (e.g. typed via the search box).
+ * Dropdown options. These are the actual distinct values present in the
+ * Compras MX dataset (verified against the loaded DB). The columns are
+ * free-text, so the API also accepts arbitrary values typed via the
+ * 'Búsqueda' box, but these match the canonical casing used in production.
  */
 const TIPO_CONTRATACION_OPTS = [
-  'Adquisiciones',
-  'Servicios',
-  'Obra Pública',
-  'Arrendamientos',
-  'Servicios Relacionados con la OP',
+  'SERVICIOS',
+  'ADQUISICIONES',
+  'OBRA PÚBLICA',
+  'SERVICIOS RELACIONADOS CON LA OBRA',
+  'ARRENDAMIENTOS',
 ];
 
 const TIPO_PROCEDIMIENTO_OPTS = [
-  'Licitación Pública',
-  'Invitación a Cuando Menos Tres Personas',
-  'Adjudicación Directa',
-  'Convenio',
-  'Proyecto de Convocatoria',
+  'LICITACIÓN PÚBLICA',
+  'INVITACIÓN A CUANDO MENOS 3 PERSONAS',
+  'ADJUDICACIÓN DIRECTA',
 ];
 
+/**
+ * Status options observed in Compras MX. The current dataset is almost
+ * exclusively 'PUBLICADO' but more appear over time as procedures advance
+ * through their lifecycle (Adjudicado, En etapa de fallo, Cancelado, etc.).
+ */
 const ESTATUS_OPTS = [
-  'Adjudicado',
-  'En etapa de fallo',
-  'Cancelado',
-  'Desierto',
-  'Publicado',
-  'En evaluación',
+  'PUBLICADO',
+  'ADJUDICADO',
+  'EN ETAPA DE FALLO',
+  'CANCELADO',
+  'DESIERTO',
 ];
 
-const LEY_OPTS = ['Adquisiciones, Arrendamientos y Servicios del Sector Público', 'Obras Públicas y Servicios Relacionados con las Mismas'];
+/** Ley codes as stored in the `ley` column (acronyms, not long names). */
+const LEY_OPTS = [
+  'LAASSP', // Adquisiciones, Arrendamientos y Servicios del Sector Público
+  'LOPSRM', // Obras Públicas y Servicios Relacionados con las Mismas
+  'CEEP', // Contratos de la Empresa PECEMEX
+  'CREDEX', // Crédito Externo
+];
 
 interface FilterSidebarProps {
   value: ProcedureFilter;
