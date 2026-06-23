@@ -11,7 +11,8 @@
     "test": "vitest run --passWithNoTests",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
-    "db:verify": "tsx src/db/verify.ts"
+    "db:verify": "tsx src/db/verify.ts",
+    "ingest": "tsx src/ingestion/cli.ts"
   },
   "dependencies": {
     "@tecnolicity/shared": "workspace:*",
