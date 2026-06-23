@@ -79,5 +79,9 @@ export function useMarketKeywords() {
     setKeywords([...DEFAULT_MARKET_KEYWORDS]);
   }, []);
 
-  return { keywords, committed, add, remove, commit, reset };
+  const clear = useCallback(() => {
+    setKeywords([]);
+  }, []);
+
+  return { keywords, committed, add, remove, commit, reset, clear };
 }

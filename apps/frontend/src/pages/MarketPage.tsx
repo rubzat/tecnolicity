@@ -39,7 +39,7 @@ const tooltipStyle = { borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 1
  * and supplier dominance — all scoped to that segment.
  */
 export function MarketPage() {
-  const { keywords, committed, add, remove, commit, reset } = useMarketKeywords();
+  const { keywords, committed, add, remove, commit, reset, clear } = useMarketKeywords();
   const [draft, setDraft] = useState('');
 
   // All queries use the COMMITTED keyword snapshot; editing chips doesn't refire
@@ -67,9 +67,14 @@ export function MarketPage() {
           title="Inteligencia de Mercado"
           subtitle="Define tu segmento por palabras clave (software, cámara, seguridad…)"
           action={
-            <Button variant="ghost" size="sm" type="button" onClick={reset}>
-              Restablecer
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" type="button" onClick={clear}>
+                Limpiar
+              </Button>
+              <Button variant="ghost" size="sm" type="button" onClick={reset}>
+                Restablecer
+              </Button>
+            </div>
           }
         />
         <div className="space-y-3 p-4">
