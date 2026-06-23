@@ -34,6 +34,11 @@ function field(row: string[], idx: number): string {
   return row[idx] ?? '';
 }
 
+/** Convert an ISO timestamp string (from normalizeTimestamp) into a Date. */
+function toDbTimestamp(iso: string | null): Date | null {
+  return iso ? new Date(iso) : null;
+}
+
 /**
  * Map a single parsed CSV row (positional, per columns.COLUMNS) into the
  * 8-entity shape. Natural keys are validated here; everything else degrades
@@ -110,9 +115,15 @@ export function mapRow(row: string[]): MappedRow {
     casoFortuito: nullableString(field(row, COLUMNS.casoFortuito)),
     creditoExterno: parseBoolean(field(row, COLUMNS.creditoExterno)),
     estatus: nullableString(field(row, COLUMNS.estatusDrc)),
-    fechaPublicacion: normalizeTimestamp(field(row, COLUMNS.fechaPublicacion), DATE_FORMATS.fechaPublicacion),
-    fechaApertura: normalizeTimestamp(field(row, COLUMNS.fechaApertura), DATE_FORMATS.fechaApertura),
-    fechaFallo: normalizeTimestamp(field(row, COLUMNS.fechaFallo), DATE_FORMATS.fechaFallo),
+    fechaPublicacion: toDbTimestamp(
+      normalizeTimestamp(field(row, COLUMNS.fechaPublicacion), DATE_FORMATS.fechaPublicacion),
+    ),
+    fechaApertura: toDbTimestamp(
+      normalizeTimestamp(field(row, COLUMNS.fechaApertura), DATE_FORMATS.fechaApertura),
+    ),
+    fechaFallo: toDbTimestamp(
+      normalizeTimestamp(field(row, COLUMNS.fechaFallo), DATE_FORMATS.fechaFallo),
+    ),
     direccionAnuncio: nullableString(field(row, COLUMNS.direccionAnuncio)),
     // Best descriptive proxy for a procedure (no dedicated descripcion column
     // in the source): the expediente título. Used later for full-text search.

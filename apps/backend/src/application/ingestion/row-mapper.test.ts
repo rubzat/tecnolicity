@@ -90,8 +90,8 @@ describe('row-mapper', () => {
 
     it('maps procedure with mixed date formats normalized', () => {
       expect(mapped.procedure.numeroProcedimiento).toBe('AA-80-V26-921069958-N-15-2026');
-      expect(mapped.procedure.fechaPublicacion).toBe('2026-03-23T20:33:39.000Z');
-      expect(mapped.procedure.fechaApertura).toBe('2026-03-23T17:00:00.000Z');
+      expect(mapped.procedure.fechaPublicacion?.toISOString()).toBe('2026-03-23T20:33:39.000Z');
+      expect(mapped.procedure.fechaApertura?.toISOString()).toBe('2026-03-23T17:00:00.000Z');
       expect(mapped.procedure.estatus).toBe('PUBLICADO');
       expect(mapped.procedure.descripcion).toBe('ADQUISICIÓN DE INSUMOS DE LABORATORIO');
     });

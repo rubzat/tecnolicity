@@ -48,9 +48,10 @@ export interface MappedProcedure {
   casoFortuito: string | null;
   creditoExterno: boolean | null;
   estatus: string | null;
-  fechaPublicacion: string | null;
-  fechaApertura: string | null;
-  fechaFallo: string | null;
+  /** timestamptz columns take JS Date objects. */
+  fechaPublicacion: Date | null;
+  fechaApertura: Date | null;
+  fechaFallo: Date | null;
   direccionAnuncio: string | null;
   /** Best-effort descriptive text (mapped from the expediente título). */
   descripcion: string | null;
