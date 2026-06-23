@@ -33,11 +33,11 @@ const QUARANTINE_PATH = process.env.QUARANTINE_PATH ?? './quarantine.jsonl';
 
 /** Expand CLI args into a list of CSV file paths (dirs → all .csv inside). */
 function resolveCsvPaths(args: string[]): string[] {
-  if (args.length === 0) return [DEFAULT_CSV];
+  const clean = args.filter((a) => a !== '--');
+  if (clean.length === 0) return [DEFAULT_CSV];
 
   const paths: string[] = [];
-  for (const arg of args) {
-    const resolved = resolve(arg);
+  for (const resolved of clean) {
     let stats;
     try {
       stats = statSync(resolved);
