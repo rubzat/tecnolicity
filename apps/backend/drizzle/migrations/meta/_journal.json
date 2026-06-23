@@ -8,6 +8,20 @@
       "when": 1782197822149,
       "tag": "0000_romantic_ben_parker",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1782197922149,
+      "tag": "0001_market_trgm_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782198022149,
+      "tag": "0002_market_tsv_indexes",
+      "breakpoints": true
     }
   ]
 }
