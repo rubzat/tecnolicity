@@ -11,11 +11,19 @@ import { env } from '../config/env.js';
 import { db, pool } from '../db/client.js';
 import * as schema from '../db/schema/index.js';
 import { DrizzleProcedureQueryRepository } from '../infrastructure/db/repositories/procedure-query-repository.js';
+import { DrizzleDocumentRepository } from '../infrastructure/db/repositories/document-repository.js';
+import { LocalFilesystemStorage } from '../infrastructure/storage/local-storage.js';
+import { InMemoryQueue } from '../infrastructure/queue/in-memory-queue.js';
+import { PlaywrightDocFetcher } from '../infrastructure/documents/playwright-fetcher.js';
 import { ListProcedures } from '../application/queries/list-procedures.js';
 import { GetProcedureDetail } from '../application/queries/get-procedure-detail.js';
 import { ComputeAnalytics } from '../application/queries/compute-analytics.js';
+import { FetchDocuments } from '../application/documents/fetch-documents.js';
+import { ListDocuments } from '../application/documents/list-documents.js';
+import { DownloadDocument } from '../application/documents/download-document.js';
 import { createProceduresRouter } from './routes/procedures.js';
 import { createAnalyticsRouter } from './routes/analytics.js';
+import { createDocumentsRouter } from './routes/documents.js';
 
 type Db = NodePgDatabase<typeof schema>;
 
@@ -37,6 +45,30 @@ export function createApp(dbClient: Db = db): Express {
   const detail = new GetProcedureDetail(repo);
   const analytics = new ComputeAnalytics(repo);
 
+  // Document-fetching composition root (Phase 5). The Playwright worker is
+  // isolated from the query/analytics API: it runs through a concurrency-limited
+  // queue (DF-5/DF-7) and writes to its own `documents` cache.
+  const documentRepo = new DrizzleDocumentRepository(dbClient);
+  const storage = new LocalFilesystemStorage(env.STORAGE_PATH);
+  const docQueue = new InMemoryQueue({
+    concurrency: env.DOCS_FETCH_CONCURRENCY,
+    delayMs: env.DOCS_FETCH_DELAY_MS,
+  });
+  const docFetcher = new PlaywrightDocFetcher({
+    storage,
+    timeoutMs: env.DOCS_FETCH_TIMEOUT_MS,
+    headlessFallback: env.DOCS_FETCH_HEADLESS_FALLBACK,
+  });
+  const fetchDocuments = new FetchDocuments({
+    documents: documentRepo,
+    fetcher: docFetcher,
+    queue: docQueue,
+    enabled: env.DOCS_FETCH_ENABLED,
+    timeoutMs: env.DOCS_FETCH_TIMEOUT_MS,
+  });
+  const listDocuments = new ListDocuments(documentRepo);
+  const downloadDocument = new DownloadDocument(documentRepo, storage);
+
   // Health check (also serves as the DB liveness probe).
   app.get('/api/health', (_req: Request, res: Response) => {
     res.json({ status: 'ok', uptime: process.uptime() });
@@ -44,6 +76,7 @@ export function createApp(dbClient: Db = db): Express {
 
   // Routes — all mounted under /api (design REST contract).
   app.use('/api/procedures', createProceduresRouter({ list, detail }));
+  app.use('/api/procedures', createDocumentsRouter({ fetch: fetchDocuments, list: listDocuments, download: downloadDocument }));
   app.use('/api/analytics', createAnalyticsRouter({ analytics }));
 
   // 404 for unknown /api routes.
