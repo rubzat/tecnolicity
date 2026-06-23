@@ -15,8 +15,11 @@ import type {
   ProcedureFilter,
   ProcedureListPage,
   ProcedureListQuery,
+  ScrapeVigentesSummary,
   SupplierGroup,
   TipoContratacionResult,
+  VigenteItem,
+  VigenteListPage,
 } from '../types';
 
 /** Strip undefined/empty values so the URL stays clean and cache keys stay stable. */
@@ -230,3 +233,59 @@ export function useFetchDocuments(numeroProcedimiento: string | undefined) {
     },
   });
 }
+
+// --- Vigente procedures (PR7: currently-open bids) ---
+
+export interface VigenteListQuery {
+  page: number;
+  page_size: number;
+  tipo_contratacion?: string;
+  tipo_procedimiento?: string;
+  dependencia?: string;
+  siglas?: string;
+  entidad_federativa?: string;
+  q?: string;
+}
+
+export function useVigentes(query: VigenteListQuery) {
+  return useQuery({
+    queryKey: ['vigentes', query],
+    queryFn: ({ signal }) => apiGet<VigenteListPage>('/vigentes', pruneVigente(query), { signal }),
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
+  });
+}
+
+/** On-demand scrape trigger (POST /vigentes/scrape). Invalidates the list on success. */
+export function useScrapeVigentes() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiPost<ScrapeVigentesSummary>('/vigentes/scrape'),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['vigentes'] });
+    },
+  });
+}
+
+/** Count of currently-open procedures (for the summary card). Reuses the list endpoint at page 1. */
+export function useVigentesCount(enabled = true) {
+  return useQuery({
+    queryKey: ['vigentes', 'count'],
+    queryFn: ({ signal }) => apiGet<VigenteListPage>('/vigentes', { page: 1, page_size: 1 }, { signal }),
+    select: (page) => page.pagination.total,
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
+function pruneVigente(q: VigenteListQuery): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(q)) {
+    if (v === undefined || v === null || v === '' || Number.isNaN(v)) continue;
+    out[k] = v;
+  }
+  return out;
+}
+
+// Re-exported so callers can type vigente rows without importing types/index.
+export type { VigenteItem };

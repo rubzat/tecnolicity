@@ -328,3 +328,51 @@ export interface MarketDominance {
   total_amount: number;
   contracts_count: number;
 }
+
+// --- Vigente procedures (PR7: currently-open bids from ComprasMX) ---
+
+export interface VigenteItem {
+  id: number;
+  numero_procedimiento: string;
+  nombre: string | null;
+  caracter: string | null;
+  dependencia: string | null;
+  siglas_dependencia: string | null;
+  estatus: string | null;
+  fecha_junta_aclaraciones: string | null;
+  fecha_presentacion_apertura: string | null;
+  tipo_procedimiento: string | null;
+  tipo_contratacion: string | null;
+  unidad_compradora: string | null;
+  codigo_expediente: string | null;
+  uuid_procedimiento: string | null;
+  direcciones_anuncio: string | null;
+  entidad_federativa: string | null;
+  scraped_at: string;
+}
+
+export interface VigenteListPage {
+  data: VigenteItem[];
+  pagination: PaginationMeta;
+}
+
+export interface VigenteFilter {
+  tipo_contratacion?: string;
+  tipo_procedimiento?: string;
+  dependencia?: string;
+  siglas?: string;
+  entidad_federativa?: string;
+  q?: string;
+}
+
+export type ScrapeStatus = 'ok' | 'blocked' | 'failed';
+
+export interface ScrapeVigentesSummary {
+  status: ScrapeStatus;
+  totalReported: number | null;
+  pagesScraped: number;
+  found: number;
+  inserted: number;
+  updated: number;
+  message?: string;
+}

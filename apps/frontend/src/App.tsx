@@ -17,6 +17,9 @@ const AnalyticsPage = lazy(() =>
 const MarketPage = lazy(() =>
   import('./pages/MarketPage').then((m) => ({ default: m.MarketPage })),
 );
+const OpportunitiesPage = lazy(() =>
+  import('./pages/OpportunitiesPage').then((m) => ({ default: m.OpportunitiesPage })),
+);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -41,6 +44,7 @@ function RouteFallback({ children }: { children: ReactNode }) {
  *
  * Routes:
  * - `/`                         → list page (eager)
+ * - `/oportunidades`            → currently-open vigente bids (lazy)
  * - `/mercado`                  → market intelligence dashboard (lazy)
  * - `/procedimientos/:numero`   → detail page (lazy)
  * - `/analytics`                → analytics dashboard (lazy)
@@ -53,6 +57,14 @@ export function App() {
         <Layout>
           <Routes>
             <Route path="/" element={<ProcedureListPage />} />
+            <Route
+              path="/oportunidades"
+              element={
+                <Suspense fallback={<RouteFallback>Cargando oportunidades…</RouteFallback>}>
+                  <OpportunitiesPage />
+                </Suspense>
+              }
+            />
             <Route
               path="/mercado"
               element={
