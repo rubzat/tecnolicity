@@ -31,6 +31,7 @@ import { createAnalyticsRouter } from './routes/analytics.js';
 import { createMarketRouter } from './routes/market.js';
 import { createDocumentsRouter } from './routes/documents.js';
 import { createVigentesRouter } from './routes/vigentes.js';
+import { startVigenteCron, stopVigenteCron } from '../infrastructure/scheduler/vigente-cron.js';
 
 type Db = NodePgDatabase<typeof schema>;
 
@@ -123,9 +124,14 @@ export function startServer(): { app: Express; close: () => Promise<void> } {
   const server = app.listen(env.PORT, () => {
     console.log(`[backend] listening on :${env.PORT} (${env.NODE_ENV})`);
   });
+
+  // Start the daily vigente scraper cron (configured via SCRAPE_CRON_*).
+  startVigenteCron();
+
   return {
     app,
     close: async () => {
+      stopVigenteCron();
       server.close();
       await pool.end();
     },

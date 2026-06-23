@@ -35,6 +35,12 @@ const envSchema = z.object({
   SCRAPER_TIMEOUT_MS: z.coerce.number().int().min(5000).default(45_000),
   // Page size requested from the API (max observed working = 100).
   SCRAPER_PAGE_SIZE: z.coerce.number().int().min(1).max(100).default(100),
+
+  // --- Vigente cron scheduler ----------------------------------------------
+  // Feature flag: enable/disable the daily automatic scrape.
+  SCRAPE_CRON_ENABLED: z.coerce.boolean().default(false),
+  // Cron expression (standard 5-field). Default: 6:00 AM every day.
+  SCRAPE_CRON_SCHEDULE: z.string().default('0 6 * * *'),
 });
 
 const parsed = envSchema.safeParse(process.env);
