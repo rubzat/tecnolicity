@@ -18,11 +18,14 @@ import { PlaywrightDocFetcher } from '../infrastructure/documents/playwright-fet
 import { ListProcedures } from '../application/queries/list-procedures.js';
 import { GetProcedureDetail } from '../application/queries/get-procedure-detail.js';
 import { ComputeAnalytics } from '../application/queries/compute-analytics.js';
+import { MarketIntelligence } from '../application/market/market-intelligence.js';
 import { FetchDocuments } from '../application/documents/fetch-documents.js';
 import { ListDocuments } from '../application/documents/list-documents.js';
 import { DownloadDocument } from '../application/documents/download-document.js';
+import { DrizzleMarketRepository } from '../infrastructure/db/repositories/market-repository.js';
 import { createProceduresRouter } from './routes/procedures.js';
 import { createAnalyticsRouter } from './routes/analytics.js';
+import { createMarketRouter } from './routes/market.js';
 import { createDocumentsRouter } from './routes/documents.js';
 
 type Db = NodePgDatabase<typeof schema>;
@@ -44,6 +47,8 @@ export function createApp(dbClient: Db = db): Express {
   const list = new ListProcedures(repo);
   const detail = new GetProcedureDetail(repo);
   const analytics = new ComputeAnalytics(repo);
+  const marketRepo = new DrizzleMarketRepository(dbClient);
+  const market = new MarketIntelligence(marketRepo);
 
   // Document-fetching composition root (Phase 5). The Playwright worker is
   // isolated from the query/analytics API: it runs through a concurrency-limited
@@ -78,6 +83,7 @@ export function createApp(dbClient: Db = db): Express {
   app.use('/api/procedures', createProceduresRouter({ list, detail }));
   app.use('/api/procedures', createDocumentsRouter({ fetch: fetchDocuments, list: listDocuments, download: downloadDocument }));
   app.use('/api/analytics', createAnalyticsRouter({ analytics }));
+  app.use('/api/market', createMarketRouter({ market }));
 
   // 404 for unknown /api routes.
   app.use('/api', (_req: Request, res: Response) => {
