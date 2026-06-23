@@ -1,10 +1,11 @@
 import { eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../../db/schema/index.js';
-import { documents } from '../../../db/schema/index.js';
+import { documents, procedures } from '../../../db/schema/index.js';
 import type {
   DocumentRepository,
   DocumentRecord,
+  ProcedureFetchInfo,
   UpsertDocumentInput,
 } from '../../../domain/repositories/document-repository.js';
 
@@ -96,5 +97,24 @@ export class DrizzleDocumentRepository implements DocumentRepository {
 
   async deleteForProcedure(procedureId: number): Promise<void> {
     await this.db.delete(documents).where(eq(documents.procedureId, procedureId));
+  }
+
+  async getProcedureFetchInfo(numeroProcedimiento: string): Promise<ProcedureFetchInfo | null> {
+    const rows = await this.db
+      .select({
+        id: procedures.id,
+        numeroProcedimiento: procedures.numeroProcedimiento,
+        direccionAnuncio: procedures.direccionAnuncio,
+      })
+      .from(procedures)
+      .where(eq(procedures.numeroProcedimiento, numeroProcedimiento))
+      .limit(1);
+    const row = rows[0];
+    if (!row) return null;
+    return {
+      id: row.id,
+      numeroProcedimiento: row.numeroProcedimiento,
+      direccionAnuncio: row.direccionAnuncio,
+    };
   }
 }

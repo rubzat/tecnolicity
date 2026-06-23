@@ -98,4 +98,18 @@ export interface DocumentRepository {
    * stale `failed`/`captcha_blocked` markers are replaced atomically.
    */
   deleteForProcedure(procedureId: number): Promise<void>;
+
+  /**
+   * Resolve the procedure's internal id + direccion_anuncio by its natural key.
+   * This is the minimal procedure context the document worker needs (it is NOT
+   * the full detail join). Returns null when the procedure is unknown (→ 404).
+   */
+  getProcedureFetchInfo(numeroProcedimiento: string): Promise<ProcedureFetchInfo | null>;
+}
+
+/** Minimal procedure info required to drive a document fetch. */
+export interface ProcedureFetchInfo {
+  id: number;
+  numeroProcedimiento: string;
+  direccionAnuncio: string | null;
 }
