@@ -11,6 +11,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@tecnolicity/shared": "workspace:*",
     "@tanstack/react-query": "^5.62.7",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",

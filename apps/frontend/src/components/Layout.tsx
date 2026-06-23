@@ -8,6 +8,7 @@ interface LayoutProps {
 
 const navItems = [
   { to: '/', label: 'Inicio', end: true },
+  { to: '/mercado', label: 'Mercado', end: false },
   { to: '/analytics', label: 'Analytics', end: false },
 ];
 

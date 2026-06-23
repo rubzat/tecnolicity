@@ -5,6 +5,12 @@ import type {
   DocumentItem,
   FetchDocumentsResponse,
   InstitucionGroup,
+  MarketBuyer,
+  MarketCompetitor,
+  MarketDominance,
+  MarketExpiringContract,
+  MarketOpportunity,
+  MarketOverview,
   ProcedureDetail,
   ProcedureFilter,
   ProcedureListPage,
@@ -21,6 +27,102 @@ function prune(filter: ProcedureFilter): Record<string, unknown> {
     out[k] = v;
   }
   return out;
+}
+
+// --- Market Intelligence (PR6) ---
+// Every hook depends on the active keyword list (`segment`). When the list is
+// empty the hooks stay disabled so no request fires until the user hits
+// "Analizar". The keywords are joined into a single comma-separated `segment`
+// param (the backend parses + falls back to defaults when absent).
+
+function segmentParam(keywords: string[]): { segment: string } {
+  return { segment: keywords.join(',') };
+}
+
+export function useMarketOverview(keywords: string[], enabled: boolean) {
+  return useQuery({
+    queryKey: ['market', 'overview', keywords],
+    queryFn: ({ signal }) =>
+      apiGet<MarketOverview>('/market/overview', segmentParam(keywords), { signal }),
+    enabled: enabled && keywords.length > 0,
+    staleTime: 60_000,
+  });
+}
+
+export function useMarketCompetitors(keywords: string[], enabled: boolean, limit = 10) {
+  return useQuery({
+    queryKey: ['market', 'competitors', keywords, limit],
+    queryFn: ({ signal }) =>
+      apiGet<{ data: MarketCompetitor[] }>(
+        '/market/competitors',
+        { ...segmentParam(keywords), limit },
+        { signal },
+      ),
+    enabled: enabled && keywords.length > 0,
+    staleTime: 60_000,
+  });
+}
+
+export function useMarketBuyers(keywords: string[], enabled: boolean, limit = 10) {
+  return useQuery({
+    queryKey: ['market', 'buyers', keywords, limit],
+    queryFn: ({ signal }) =>
+      apiGet<{ data: MarketBuyer[] }>(
+        '/market/buyers',
+        { ...segmentParam(keywords), limit },
+        { signal },
+      ),
+    enabled: enabled && keywords.length > 0,
+    staleTime: 60_000,
+  });
+}
+
+export function useMarketOpportunities(
+  keywords: string[],
+  enabled: boolean,
+  page: number,
+  limit = 20,
+) {
+  return useQuery({
+    queryKey: ['market', 'opportunities', keywords, page, limit],
+    queryFn: ({ signal }) =>
+      apiGet<{ data: MarketOpportunity[]; pagination: { total: number; total_pages: number } }>(
+        '/market/opportunities',
+        { ...segmentParam(keywords), page, limit },
+        { signal },
+      ),
+    enabled: enabled && keywords.length > 0,
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
+  });
+}
+
+export function useMarketExpiring(keywords: string[], enabled: boolean, months = 6, limit = 20) {
+  return useQuery({
+    queryKey: ['market', 'expiring', keywords, months, limit],
+    queryFn: ({ signal }) =>
+      apiGet<{ data: MarketExpiringContract[] }>(
+        '/market/expiring',
+        { ...segmentParam(keywords), months, limit },
+        { signal },
+      ),
+    enabled: enabled && keywords.length > 0,
+    staleTime: 60_000,
+  });
+}
+
+export function useMarketDominance(keywords: string[], enabled: boolean, limit = 10) {
+  return useQuery({
+    queryKey: ['market', 'dominance', keywords, limit],
+    queryFn: ({ signal }) =>
+      apiGet<{ data: MarketDominance[] }>(
+        '/market/dominance',
+        { ...segmentParam(keywords), limit },
+        { signal },
+      ),
+    enabled: enabled && keywords.length > 0,
+    staleTime: 60_000,
+  });
 }
 
 // --- Procedure list ---

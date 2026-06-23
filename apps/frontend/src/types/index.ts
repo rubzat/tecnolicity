@@ -263,3 +263,68 @@ export interface FetchDocumentsResponse {
   documents: DocumentItem[];
   message?: string;
 }
+
+// --- Market Intelligence (PR6) ---
+
+export interface MarketOverview {
+  total_contracts: number;
+  total_amount: number;
+  avg_amount: number;
+  unique_suppliers: number;
+  unique_buyers: number;
+  by_year: { year: number; contracts: number; amount: number }[];
+  segment_used_default: boolean;
+}
+
+export interface MarketCompetitor {
+  nombre: string;
+  rfc: string;
+  contracts_count: number;
+  total_amount: number;
+  avg_amount: number;
+  unique_buyers: number;
+  market_share_pct: number;
+}
+
+export interface MarketBuyer {
+  nombre: string;
+  clave: string;
+  contracts_count: number;
+  total_amount: number;
+  unique_suppliers: number;
+  top_supplier: { nombre: string; rfc: string; market_share_pct: number } | null;
+}
+
+export interface MarketOpportunity {
+  numero_procedimiento: string;
+  descripcion: string | null;
+  tipo_contratacion: string | null;
+  estatus: string | null;
+  fecha_apertura: string | null;
+  fecha_fallo: string | null;
+  institucion_nombre: string;
+  institucion_clave: string;
+  importe_estimado: number;
+}
+
+export interface MarketExpiringContract {
+  contrato_id: number;
+  numero_contrato: string | null;
+  titulo: string | null;
+  importe_drc: number | null;
+  fecha_fin: string | null;
+  supplier: { rfc: string; nombre: string } | null;
+  institucion_nombre: string;
+  institucion_clave: string;
+  numero_procedimiento: string;
+}
+
+export interface MarketDominance {
+  institution_nombre: string;
+  institution_clave: string;
+  dominant_supplier_nombre: string;
+  dominant_supplier_rfc: string;
+  dominant_share_pct: number;
+  total_amount: number;
+  contracts_count: number;
+}
