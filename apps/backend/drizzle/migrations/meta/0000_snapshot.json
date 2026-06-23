@@ -1,0 +1,1218 @@
+{
+  "id": "1c91221e-8b46-4cb0-bc89-2712cfb98c41",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.contract_amounts": {
+      "name": "contract_amounts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "contract_id": {
+          "name": "contract_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "monto_sin_imp_min": {
+          "name": "monto_sin_imp_min",
+          "type": "numeric(18, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "monto_con_imp_min": {
+          "name": "monto_con_imp_min",
+          "type": "numeric(18, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "monto_sin_imp_max": {
+          "name": "monto_sin_imp_max",
+          "type": "numeric(18, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "monto_con_imp_max": {
+          "name": "monto_con_imp_max",
+          "type": "numeric(18, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "moneda": {
+          "name": "moneda",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'MXN'"
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "contract_amount_tipo",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'original'"
+        },
+        "codigo_ref": {
+          "name": "codigo_ref",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fecha_fin_convenio": {
+          "name": "fecha_fin_convenio",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "contract_amounts_contract_idx": {
+          "name": "contract_amounts_contract_idx",
+          "columns": [
+            {
+              "expression": "contract_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "contract_amounts_monto_con_imp_max_idx": {
+          "name": "contract_amounts_monto_con_imp_max_idx",
+          "columns": [
+            {
+              "expression": "monto_con_imp_max",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "contract_amounts_contract_id_contracts_id_fk": {
+          "name": "contract_amounts_contract_id_contracts_id_fk",
+          "tableFrom": "contract_amounts",
+          "tableTo": "contracts",
+          "columnsFrom": [
+            "contract_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.contracts": {
+      "name": "contracts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "codigo_contrato": {
+          "name": "codigo_contrato",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "numero_contrato": {
+          "name": "numero_contrato",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "titulo": {
+          "name": "titulo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "descripcion": {
+          "name": "descripcion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contrato_plurianual": {
+          "name": "contrato_plurianual",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "estatus_drc": {
+          "name": "estatus_drc",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fecha_inicio": {
+          "name": "fecha_inicio",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fecha_fin": {
+          "name": "fecha_fin",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fecha_firma": {
+          "name": "fecha_firma",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fecha_firma_contrato": {
+          "name": "fecha_firma_contrato",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "importe_drc": {
+          "name": "importe_drc",
+          "type": "numeric(18, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "moneda": {
+          "name": "moneda",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'MXN'"
+        },
+        "convenio_modificatorio": {
+          "name": "convenio_modificatorio",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "codigo_ref_contrato": {
+          "name": "codigo_ref_contrato",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "estatus_contrato": {
+          "name": "estatus_contrato",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tipo_contrato": {
+          "name": "tipo_contrato",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "procedure_id": {
+          "name": "procedure_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "supplier_id": {
+          "name": "supplier_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "contracts_procedure_idx": {
+          "name": "contracts_procedure_idx",
+          "columns": [
+            {
+              "expression": "procedure_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "contracts_supplier_idx": {
+          "name": "contracts_supplier_idx",
+          "columns": [
+            {
+              "expression": "supplier_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "contracts_importe_drc_idx": {
+          "name": "contracts_importe_drc_idx",
+          "columns": [
+            {
+              "expression": "importe_drc",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "contracts_estatus_drc_idx": {
+          "name": "contracts_estatus_drc_idx",
+          "columns": [
+            {
+              "expression": "estatus_drc",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "contracts_procedure_id_procedures_id_fk": {
+          "name": "contracts_procedure_id_procedures_id_fk",
+          "tableFrom": "contracts",
+          "tableTo": "procedures",
+          "columnsFrom": [
+            "procedure_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "contracts_supplier_id_suppliers_id_fk": {
+          "name": "contracts_supplier_id_suppliers_id_fk",
+          "tableFrom": "contracts",
+          "tableTo": "suppliers",
+          "columnsFrom": [
+            "supplier_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.documents": {
+      "name": "documents",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "procedure_id": {
+          "name": "procedure_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "titulo": {
+          "name": "titulo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "url_fuente": {
+          "name": "url_fuente",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "archivo_local": {
+          "name": "archivo_local",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "storage_ref": {
+          "name": "storage_ref",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fecha_descarga": {
+          "name": "fecha_descarga",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "estatus": {
+          "name": "estatus",
+          "type": "document_estatus",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "error": {
+          "name": "error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "documents_procedure_idx": {
+          "name": "documents_procedure_idx",
+          "columns": [
+            {
+              "expression": "procedure_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "documents_estatus_idx": {
+          "name": "documents_estatus_idx",
+          "columns": [
+            {
+              "expression": "estatus",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "documents_procedure_estatus_idx": {
+          "name": "documents_procedure_estatus_idx",
+          "columns": [
+            {
+              "expression": "procedure_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "estatus",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "documents_procedure_id_procedures_id_fk": {
+          "name": "documents_procedure_id_procedures_id_fk",
+          "tableFrom": "documents",
+          "tableTo": "procedures",
+          "columnsFrom": [
+            "procedure_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.expedientes": {
+      "name": "expedientes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "codigo_expediente": {
+          "name": "codigo_expediente",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "referencia": {
+          "name": "referencia",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "titulo": {
+          "name": "titulo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "partida_especifica": {
+          "name": "partida_especifica",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "procedure_id": {
+          "name": "procedure_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "expedientes_procedure_idx": {
+          "name": "expedientes_procedure_idx",
+          "columns": [
+            {
+              "expression": "procedure_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "expedientes_procedure_id_procedures_id_fk": {
+          "name": "expedientes_procedure_id_procedures_id_fk",
+          "tableFrom": "expedientes",
+          "tableTo": "procedures",
+          "columnsFrom": [
+            "procedure_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.institutions": {
+      "name": "institutions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "clave_institucion": {
+          "name": "clave_institucion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nombre_institucion": {
+          "name": "nombre_institucion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "siglas": {
+          "name": "siglas",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "orden_gobierno": {
+          "name": "orden_gobierno",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "clave_ramo": {
+          "name": "clave_ramo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "descripcion_ramo": {
+          "name": "descripcion_ramo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tipo_institucion": {
+          "name": "tipo_institucion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "institutions_clave_institucion_idx": {
+          "name": "institutions_clave_institucion_idx",
+          "columns": [
+            {
+              "expression": "clave_institucion",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "institutions_orden_siglas_idx": {
+          "name": "institutions_orden_siglas_idx",
+          "columns": [
+            {
+              "expression": "orden_gobierno",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "siglas",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.procedures": {
+      "name": "procedures",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "numero_procedimiento": {
+          "name": "numero_procedimiento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "caracter": {
+          "name": "caracter",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tipo_contratacion": {
+          "name": "tipo_contratacion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tipo_procedimiento": {
+          "name": "tipo_procedimiento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ley": {
+          "name": "ley",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "articulo_excepcion": {
+          "name": "articulo_excepcion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "descripcion_excepcion": {
+          "name": "descripcion_excepcion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contrato_marco": {
+          "name": "contrato_marco",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "compra_consolidada": {
+          "name": "compra_consolidada",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "forma_participacion": {
+          "name": "forma_participacion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "caso_fortuito": {
+          "name": "caso_fortuito",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "credito_externo": {
+          "name": "credito_externo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "estatus": {
+          "name": "estatus",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fecha_publicacion": {
+          "name": "fecha_publicacion",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fecha_apertura": {
+          "name": "fecha_apertura",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fecha_fallo": {
+          "name": "fecha_fallo",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "direccion_anuncio": {
+          "name": "direccion_anuncio",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "descripcion": {
+          "name": "descripcion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ingestion_batch_id": {
+          "name": "ingestion_batch_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "purchasing_unit_id": {
+          "name": "purchasing_unit_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "embedding": {
+          "name": "embedding",
+          "type": "vector(1536)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "procedures_numero_procedimiento_idx": {
+          "name": "procedures_numero_procedimiento_idx",
+          "columns": [
+            {
+              "expression": "numero_procedimiento",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "procedures_purchasing_unit_idx": {
+          "name": "procedures_purchasing_unit_idx",
+          "columns": [
+            {
+              "expression": "purchasing_unit_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "procedures_tipo_contratacion_idx": {
+          "name": "procedures_tipo_contratacion_idx",
+          "columns": [
+            {
+              "expression": "tipo_contratacion",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "procedures_tipo_procedimiento_idx": {
+          "name": "procedures_tipo_procedimiento_idx",
+          "columns": [
+            {
+              "expression": "tipo_procedimiento",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "procedures_ley_idx": {
+          "name": "procedures_ley_idx",
+          "columns": [
+            {
+              "expression": "ley",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "procedures_estatus_idx": {
+          "name": "procedures_estatus_idx",
+          "columns": [
+            {
+              "expression": "estatus",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "procedures_fecha_publicacion_idx": {
+          "name": "procedures_fecha_publicacion_idx",
+          "columns": [
+            {
+              "expression": "fecha_publicacion",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "procedures_fecha_apertura_idx": {
+          "name": "procedures_fecha_apertura_idx",
+          "columns": [
+            {
+              "expression": "fecha_apertura",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "procedures_fecha_fallo_idx": {
+          "name": "procedures_fecha_fallo_idx",
+          "columns": [
+            {
+              "expression": "fecha_fallo",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "procedures_purchasing_unit_id_purchasing_units_id_fk": {
+          "name": "procedures_purchasing_unit_id_purchasing_units_id_fk",
+          "tableFrom": "procedures",
+          "tableTo": "purchasing_units",
+          "columnsFrom": [
+            "purchasing_unit_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.purchasing_units": {
+      "name": "purchasing_units",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "clave_uc": {
+          "name": "clave_uc",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nombre_uc": {
+          "name": "nombre_uc",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "institution_id": {
+          "name": "institution_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "purchasing_units_clave_uc_idx": {
+          "name": "purchasing_units_clave_uc_idx",
+          "columns": [
+            {
+              "expression": "clave_uc",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "purchasing_units_institution_idx": {
+          "name": "purchasing_units_institution_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "purchasing_units_institution_id_institutions_id_fk": {
+          "name": "purchasing_units_institution_id_institutions_id_fk",
+          "tableFrom": "purchasing_units",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.suppliers": {
+      "name": "suppliers",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "rfc": {
+          "name": "rfc",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nombre": {
+          "name": "nombre",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "folio_rupc": {
+          "name": "folio_rupc",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pais": {
+          "name": "pais",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nacionalidad": {
+          "name": "nacionalidad",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "estratificacion": {
+          "name": "estratificacion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "auto_registro_compranet": {
+          "name": "auto_registro_compranet",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "suppliers_rfc_idx": {
+          "name": "suppliers_rfc_idx",
+          "columns": [
+            {
+              "expression": "rfc",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "suppliers_nombre_idx": {
+          "name": "suppliers_nombre_idx",
+          "columns": [
+            {
+              "expression": "nombre",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.contract_amount_tipo": {
+      "name": "contract_amount_tipo",
+      "schema": "public",
+      "values": [
+        "original",
+        "convenio"
+      ]
+    },
+    "public.document_estatus": {
+      "name": "document_estatus",
+      "schema": "public",
+      "values": [
+        "pending",
+        "fetched",
+        "failed",
+        "captcha_blocked"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
