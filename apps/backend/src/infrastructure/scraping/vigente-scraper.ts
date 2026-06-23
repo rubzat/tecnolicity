@@ -1,4 +1,4 @@
-import { chromium, type Browser, type Response } from 'playwright';
+import { chromium, type Browser } from 'playwright';
 import {
   parseSearchResponse,
   VIGENTE_FILTER_BODY,
@@ -96,90 +96,84 @@ export class VigenteScraper {
       });
       const page = await context.newPage();
 
-      // Intercept every expedientes search response.
-      let latest: ParsedVigentePage = { registros: [], pagination: null };
+      // Match any expedientes SEARCH response (not the detail GET).
+      const isSearchRes = (url: string): boolean => EXP_RE.test(url) && WHITNEY_RE.test(url);
+
+      // --- Page 1: load the SPA, wait for the first search POST, parse it ---
+      const firstResponse = page.waitForResponse((r) => isSearchRes(r.url()) && r.ok(), {
+        timeout: this.opts.timeoutMs,
+      });
+      await page.goto(SEARCH_URL, { waitUntil: 'domcontentloaded', timeout: this.opts.timeoutMs });
+
       let sawForbidden = false;
-      page.on('response', async (response: Response) => {
-        const url = response.url();
-        if (!EXP_RE.test(url) || !WHITNEY_RE.test(url)) return;
-        if (response.status() === 403) {
-          sawForbidden = true;
-          return;
-        }
-        try {
-          if (response.ok() && response.request().method() === 'POST') {
-            const json = await response.json();
-            latest = parseSearchResponse(json);
-          }
-        } catch {
-          /* body already consumed or gone */
-        }
+      let first: ParsedVigentePage;
+      try {
+        first = parseSearchResponse(await (await firstResponse).json());
+      } catch {
+        // Fall back to a settle if the structured wait failed (slow bootstrap).
+        await this.settle(page);
+        first = { registros: [], pagination: null };
+      }
+      // Detect a reCAPTCHA 403 block separately (the ok()-predicate skips it).
+      page.on('response', (r) => {
+        if (r.status() === 403 && isSearchRes(r.url())) sawForbidden = true;
       });
 
-      // --- Page 1: load the SPA, let the default vigentes search fire ---
-      await page.goto(SEARCH_URL, { waitUntil: 'domcontentloaded', timeout: this.opts.timeoutMs });
-      await this.settle(page);
-
-      if (latest.registros.length === 0) {
+      if (first.registros.length === 0) {
         // Give the search one more chance (reCAPTCHA scoring can delay it).
         await page.waitForTimeout(3000);
       }
 
-      if (sawForbidden && latest.registros.length === 0) {
+      if (first.registros.length === 0) {
         return {
           registros: [],
           totalReported: null,
           pagesScraped: 0,
-          blocked: true,
-          error:
-            'ComprasMX rechazó la solicitud (reCAPTCHA v3 / 403). No se pudieron obtener los procedimientos vigentes.',
+          blocked: sawForbidden,
+          error: sawForbidden
+            ? 'ComprasMX rechazó la solicitud (reCAPTCHA v3 / 403). No se pudieron obtener los procedimientos vigentes.'
+            : 'La búsqueda de vigentes no devolvió registros.',
         };
       }
 
-      if (latest.registros.length === 0) {
-        return {
-          registros: [],
-          totalReported: null,
-          pagesScraped: 0,
-          blocked: false,
-          error: 'La búsqueda de vigentes no devolvió registros.',
-        };
-      }
-
-      const totalReported = latest.pagination?.totalRegistros ?? null;
-      const totalPaginas = latest.pagination?.totalPaginas ?? this.opts.maxPages;
+      const totalReported = first.pagination?.totalRegistros ?? null;
+      const totalPaginas = first.pagination?.totalPaginas ?? this.opts.maxPages;
       const merged = new Map<string, UpsertVigenteInput>();
       const pushPage = (p: ParsedVigentePage) => {
         for (const r of p.registros) merged.set(r.numeroProcedimiento, r);
       };
-      pushPage(latest);
-      onProgress?.({
-        page: 1,
-        registros: latest.registros.length,
-        totalReported,
-      });
+      pushPage(first);
+      onProgress?.({ page: 1, registros: first.registros.length, totalReported });
 
-      // --- Pages 2..N: advance the PrimeNG paginator, capturing each response ---
+      // --- Pages 2..N: click paginator-next AND wait for the matching POST ---
+      // Using Promise.all so the response listener is armed BEFORE the click
+      // fires — this eliminates the networkidle race that caused skipped pages.
       const pagesToFetch = Math.min(totalPaginas, this.opts.maxPages);
+      let pagesScraped = 1;
       for (let nextPage = 2; nextPage <= pagesToFetch; nextPage++) {
+        const next = page.locator('.p-paginator-next').first();
+        const disabled = (await next.getAttribute('disabled').catch(() => 'x')) !== null;
+        if (disabled) break;
+
         await this.delay();
-        const before = latest;
-        latest = { registros: [], pagination: before.pagination };
-
-        const clicked = await this.clickPaginatorNext(page);
-        if (!clicked) break; // no paginator → no more pages
-        await this.settle(page, { short: true });
-
-        if (latest.registros.length === 0) {
-          // One retry: the response sometimes lands just after networkidle.
-          await page.waitForTimeout(2500);
+        let parsed: ParsedVigentePage | null = null;
+        try {
+          const [response] = await Promise.all([
+            page.waitForResponse((r) => isSearchRes(r.url()) && r.ok(), { timeout: this.opts.timeoutMs }),
+            next.click({ timeout: 5000 }),
+          ]);
+          parsed = parseSearchResponse(await response.json());
+        } catch {
+          // Click or response failed → stop (no more pages / transient error).
+          break;
         }
-        if (latest.registros.length === 0) break; // genuinely out of results
 
-        pushPage(latest);
+        if (parsed.registros.length === 0) break; // genuinely out of results
+        pushPage(parsed);
+        pagesScraped = nextPage;
         onProgress?.({
           page: nextPage,
-          registros: latest.registros.length,
+          registros: parsed.registros.length,
           totalReported,
         });
       }
@@ -187,7 +181,7 @@ export class VigenteScraper {
       return {
         registros: [...merged.values()],
         totalReported,
-        pagesScraped: Math.min(pagesToFetch, Math.max(1, merged.size > 0 ? pagesToFetch : 0)),
+        pagesScraped,
         blocked: false,
       };
     } catch (err) {
@@ -202,17 +196,6 @@ export class VigenteScraper {
     } finally {
       await browser?.close().catch(() => undefined);
     }
-  }
-
-  /** Click the paginator's "next page" button (PrimeNG class). */
-  private async clickPaginatorNext(page: import('playwright').Page): Promise<boolean> {
-    const next = page.locator('.p-paginator-next').first();
-    const exists = await next.count().catch(() => 0);
-    if (exists === 0) return false;
-    const disabled = await next.getAttribute('disabled').catch(() => null);
-    if (disabled !== null) return false;
-    await next.click({ timeout: 5000 }).catch(() => undefined);
-    return true;
   }
 
   /** Wait for the SPA to bootstrap + the search POST to resolve. */

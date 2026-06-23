@@ -12,7 +12,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:verify": "tsx src/db/verify.ts",
-    "ingest": "tsx src/ingestion/cli.ts"
+    "ingest": "tsx src/ingestion/cli.ts",
+    "scrape-vigentes": "tsx src/scripts/scrape-vigentes.ts"
   },
   "dependencies": {
     "@tecnolicity/shared": "workspace:*",

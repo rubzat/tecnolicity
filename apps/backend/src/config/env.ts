@@ -24,6 +24,17 @@ const envSchema = z.object({
   STORAGE_PATH: z.string().default('./storage'),
   // Start headless; if reCAPTCHA blocks, retry once non-headless (#213).
   DOCS_FETCH_HEADLESS_FALLBACK: z.coerce.boolean().default(true),
+
+  // --- Vigente scraper (PR7) -----------------------------------------------
+  // Maximum result pages to scrape per run (safety cap). The API reports the
+  // true page count; we stop at whichever is smaller.
+  SCRAPER_MAX_PAGES: z.coerce.number().int().min(1).default(50),
+  // Delay (ms) between page loads — respect the government source.
+  SCRAPER_DELAY_MS: z.coerce.number().int().min(0).default(2000),
+  // Per-page navigation + settle timeout.
+  SCRAPER_TIMEOUT_MS: z.coerce.number().int().min(5000).default(45_000),
+  // Page size requested from the API (max observed working = 100).
+  SCRAPER_PAGE_SIZE: z.coerce.number().int().min(1).max(100).default(100),
 });
 
 const parsed = envSchema.safeParse(process.env);
