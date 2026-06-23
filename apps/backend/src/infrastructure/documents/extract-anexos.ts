@@ -143,6 +143,71 @@ export function extractAnexosFromBody(body: unknown, baseUrl?: string): RawAnexo
   return out;
 }
 
+function asRecord(v: unknown): Record<string, unknown> | null {
+  return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+}
+
+function extractExtension(filename: string | null): string | null {
+  if (!filename) return null;
+  const m = filename.match(/\.([a-z0-9]{2,4})(?:$|\?|#)/i);
+  return m ? m[1]!.toUpperCase() : null;
+}
+
+/**
+ * Specialized extractor for the REAL ComprasMX whitney anexos response shape
+ * (discovered via live Playwright diagnostic against comprasmx.buengobierno.gob.mx):
+ *
+ *   { success, data: [{ registros: [{ descripcion, tipodoc_descripcion,
+ *       uuid_documento, documentos: [{ nombre, uuid_pa, original_size }] }] }] }
+ *
+ * The generic `extractAnexosFromBody` only unwraps to `data[]` and stops there;
+ * the actual files are two levels deeper (`registros[].documentos[]`). This
+ * function flattens that nesting so each file becomes its own RawAnexo.
+ *
+ * `downloadUrl` is null because the download endpoint format is undocumented
+ * (#213); metadata (titulo/tipo/filename) is the deliverable, and the frontend
+ * links each row to the official anuncio page via `urlFuente = baseUrl`.
+ */
+export function extractComprasMxAnexos(body: unknown, baseUrl?: string): RawAnexo[] {
+  const root = asRecord(body);
+  if (!root) return [];
+  const data = root['data'];
+  if (!Array.isArray(data)) return [];
+
+  const out: RawAnexo[] = [];
+  for (const pageEntry of data) {
+    const pageRec = asRecord(pageEntry);
+    if (!pageRec) continue;
+    const registros = pageRec['registros'];
+    if (!Array.isArray(registros)) continue;
+    for (const reg of registros) {
+      const r = asRecord(reg);
+      if (!r) continue;
+      const catTitulo = probeString(r, ['descripcion', 'tipodoc_descripcion']);
+      const tipo = probeString(r, ['tipodoc_descripcion']);
+      const docs = r['documentos'];
+      if (Array.isArray(docs) && docs.length > 0) {
+        for (const doc of docs) {
+          const d = asRecord(doc);
+          if (!d) continue;
+          const nombre = probeString(d, ['nombre', 'descripcion']);
+          if (!nombre && !catTitulo) continue;
+          out.push({
+            titulo: nombre ?? catTitulo!,
+            tipo: tipo ?? extractExtension(nombre),
+            urlFuente: baseUrl ?? '(sin URL)',
+            downloadUrl: null,
+          });
+        }
+      } else if (catTitulo) {
+        // A registro with no embedded files yet — still surface the category.
+        out.push({ titulo: catTitulo, tipo, urlFuente: baseUrl ?? '(sin URL)', downloadUrl: null });
+      }
+    }
+  }
+  return out;
+}
+
 /**
  * Fallback: scrape document links from rendered DOM HTML (used when no anexos
  * API response was intercepted). Looks for <a> tags whose href or text suggests
@@ -183,13 +248,6 @@ export function scrapeAnexosFromHtml(html: string, baseUrl?: string): RawAnexo[]
     });
   }
   return out;
-}
-
-/** Best-effort file extension → human tipo label. */
-function extractExtension(href: string): string | null {
-  const m = href.match(/\.([a-z0-9]{2,4})(?:$|\?|#)/i);
-  if (!m) return null;
-  return m[1]!.toUpperCase();
 }
 
 /** Heuristic: does a URL look like the ComprasMX anexos endpoint? */

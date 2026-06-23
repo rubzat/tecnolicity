@@ -8,6 +8,7 @@ import type {
 } from '../../domain/documents/doc-fetcher.js';
 import {
   extractAnexosFromBody,
+  extractComprasMxAnexos,
   scrapeAnexosFromHtml,
   isAnexosEndpoint,
   isComprasApi,
@@ -140,14 +141,22 @@ export class PlaywrightDocFetcher implements DocFetcher {
       }
 
       // 2) Anexos intercepted successfully → extract + download.
+      //    Try the ComprasMX-specific shape first (it nests two levels deeper than
+      //    the generic unwrap), then fall back to the generic extractor.
+      const fuenteUrl = req.url;
       const rawFromApi =
-        anexosBody !== null ? extractAnexosFromBody(anexosBody, anexosUrl ?? undefined) : [];
+        anexosBody !== null
+          ? [
+              ...extractComprasMxAnexos(anexosBody, fuenteUrl),
+              ...extractAnexosFromBody(anexosBody, fuenteUrl),
+            ]
+          : [];
 
       // 3) Fallback: scrape the rendered DOM for document links.
       let rawFromDom: RawAnexo[] = [];
       if (rawFromApi.length === 0) {
         const html = await page.content();
-        rawFromDom = scrapeAnexosFromHtml(html, req.url);
+        rawFromDom = scrapeAnexosFromHtml(html, fuenteUrl);
       }
 
       const raw = rawFromApi.length > 0 ? rawFromApi : rawFromDom;

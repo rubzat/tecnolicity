@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   extractAnexosFromBody,
+  extractComprasMxAnexos,
   scrapeAnexosFromHtml,
   unwrapAnexoList,
   isAnexosEndpoint,
@@ -142,5 +143,115 @@ describe('endpoint heuristics', () => {
     expect(isComprasApi('https://upcp-cnetservicios.buengobierno.gob.mx/whitney/sitiopublico/x')).toBe(true);
     expect(isComprasApi('https://comprasmx.buengobierno.gob.mx/#/x')).toBe(true);
     expect(isComprasApi('https://example.com/api')).toBe(false);
+  });
+});
+
+// Real ComprasMX whitney anexos response shape (captured live via Playwright).
+const COMPRASMX_ANEXOS_BODY = {
+  success: true,
+  data: [
+    {
+      registros: [
+        {
+          no: 1,
+          descripcion: 'ANEXO TÉCNICO',
+          tipodoc_descripcion: 'ANEXO TÉCNICO',
+          uuid_documento: '5d2fa9b9-76e5-442d-8ea8-943901832add',
+          id_proc_anexo: 7036898,
+          documentos: [
+            {
+              id_proc_anexo: 7036898,
+              descripcion: 'ANEXO TÉCNICO',
+              uuid_pa: '5d2fa9b9-76e5-442d-8ea8-943901832add',
+              nombre: 'ANEXO TECNICO.pdf',
+              original_size: 184661,
+              file_size: 0.1761065,
+            },
+          ],
+        },
+        {
+          no: 2,
+          descripcion: 'OFICIO DE NOTIFICACIÓN DE ADJUDICACIÓN',
+          tipodoc_descripcion: 'OFICIO DE NOTIFICACIÓN DE ADJUDICACIÓN',
+          uuid_documento: '2c50ef1d-e9a8-4818-a0c4-c79be44112ca',
+          id_proc_anexo: 7043019,
+          documentos: [
+            {
+              id_proc_anexo: 7043019,
+              descripcion: 'OFICIO DE NOTIFICACIÓN',
+              uuid_pa: '2c50ef1d-e9a8-4818-a0c4-c79be44112ca',
+              nombre: 'AMARO.pdf',
+              original_size: 1020446,
+            },
+          ],
+        },
+      ],
+      paginacion: [{ pagina_actual: 1, total_registros: 2 }],
+    },
+  ],
+  msg: null,
+};
+
+describe('extractComprasMxAnexos (real ComprasMX shape)', () => {
+  const anuncio = 'https://comprasmx.buengobierno.gob.mx/sitiopublico/#/sitiopublico/detalle/UUID/procedimiento';
+
+  it('flattens registros[].documentos[] into one anexo per file', () => {
+    const out = extractComprasMxAnexos(COMPRASMX_ANEXOS_BODY, anuncio);
+    expect(out).toHaveLength(2);
+    // First file: filename "ANEXO TECNICO.pdf", tipo from tipodoc_descripcion
+    expect(out[0]!.titulo).toBe('ANEXO TECNICO.pdf');
+    expect(out[0]!.tipo).toBe('ANEXO TÉCNICO');
+    // Second file
+    expect(out[1]!.titulo).toBe('AMARO.pdf');
+  });
+
+  it('uses the anuncio URL as urlFuente (frontend links each row to the official page)', () => {
+    const out = extractComprasMxAnexos(COMPRASMX_ANEXOS_BODY, anuncio);
+    expect(out.every((a) => a.urlFuente === anuncio)).toBe(true);
+  });
+
+  it('sets downloadUrl null (download endpoint format undocumented, #213)', () => {
+    const out = extractComprasMxAnexos(COMPRASMX_ANEXOS_BODY, anuncio);
+    expect(out.every((a) => a.downloadUrl === null)).toBe(true);
+  });
+
+  it('falls back to tipodoc extension when nombre has none', () => {
+    const body = {
+      success: true,
+      data: [
+        {
+          registros: [
+            {
+              descripcion: 'Resolución',
+              tipodoc_descripcion: 'Resolución',
+              documentos: [{ nombre: 'resolucion_sin_ext', uuid_pa: 'x' }],
+            },
+          ],
+        },
+      ],
+    };
+    const out = extractComprasMxAnexos(body);
+    expect(out[0]!.titulo).toBe('resolucion_sin_ext');
+    expect(out[0]!.tipo).toBe('Resolución');
+  });
+
+  it('handles a registro with no embedded documentos (category only)', () => {
+    const body = { success: true, data: [{ registros: [{ descripcion: 'Bases', tipodoc_descripcion: 'Bases' }] }] };
+    const out = extractComprasMxAnexos(body);
+    expect(out).toHaveLength(1);
+    expect(out[0]!.titulo).toBe('Bases');
+  });
+
+  it('returns [] when the shape does not match', () => {
+    expect(extractComprasMxAnexos(null)).toEqual([]);
+    expect(extractComprasMxAnexos({ success: false })).toEqual([]);
+    expect(extractComprasMxAnexos({ data: [] })).toEqual([]);
+    expect(extractComprasMxAnexos({ data: [{ foo: 'bar' }] })).toEqual([]);
+  });
+
+  it('the generic extractor alone would MISS this shape (proving the specialized one is needed)', () => {
+    // The generic extractAnexosFromBody unwraps to data[] but the elements are
+    // {registros, paginacion} objects with no titulo/url fields → 0 results.
+    expect(extractAnexosFromBody(COMPRASMX_ANEXOS_BODY, anuncio)).toHaveLength(0);
   });
 });
