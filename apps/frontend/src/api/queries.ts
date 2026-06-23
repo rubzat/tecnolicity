@@ -1,7 +1,9 @@
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { apiGet } from './client';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { apiGet, apiPost } from './client';
 import type {
   AnalyticsSummary,
+  DocumentItem,
+  FetchDocumentsResponse,
   InstitucionGroup,
   ProcedureDetail,
   ProcedureFilter,
@@ -86,5 +88,43 @@ export function useAnalyticsTopProveedores(filter: ProcedureFilter, limit = 10) 
     queryFn: ({ signal }) =>
       apiGet<{ data: SupplierGroup[] }>('/analytics/top-proveedores', { ...prune(filter), limit }, { signal }),
     staleTime: 60_000,
+  });
+}
+
+// --- Documents (Phase 5) ---
+
+/** Cached documents for a procedure (DF-1 read). Empty array when not fetched. */
+export function useDocuments(numeroProcedimiento: string | undefined) {
+  return useQuery({
+    queryKey: ['documents', numeroProcedimiento],
+    queryFn: ({ signal }) => {
+      if (!numeroProcedimiento) throw new Error('Missing numero_procedimiento');
+      return apiGet<{ data: DocumentItem[] }>(
+        `/procedures/${encodeURIComponent(numeroProcedimiento)}/documents`,
+        undefined,
+        { signal },
+      );
+    },
+    enabled: Boolean(numeroProcedimiento),
+  });
+}
+
+/** On-demand fetch trigger (POST /documents/fetch). Cache-first on the server. */
+export function useFetchDocuments(numeroProcedimiento: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => {
+      if (!numeroProcedimiento) throw new Error('Missing numero_procedimiento');
+      return apiPost<FetchDocumentsResponse>(
+        `/procedures/${encodeURIComponent(numeroProcedimiento)}/documents/fetch`,
+      );
+    },
+    // The response already carries the freshly-stored rows → write them straight
+    // into the documents cache (no extra refetch round-trip, no list flash).
+    onSuccess: (data) => {
+      if (numeroProcedimiento) {
+        qc.setQueryData(['documents', numeroProcedimiento], { data: data.documents });
+      }
+    },
   });
 }

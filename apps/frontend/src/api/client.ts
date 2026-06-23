@@ -61,6 +61,27 @@ export async function apiGet<T>(path: string, query?: Record<string, unknown>, o
   return body as T;
 }
 
+/**
+ * POST wrapper (same error normalization as apiGet). Used by the on-demand
+ * document fetch trigger.
+ */
+export async function apiPost<T>(path: string, opts?: RequestOptions): Promise<T> {
+  const url = new URL(`${API_BASE}${path}`, window.location.origin);
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { Accept: 'application/json' },
+    signal: opts?.signal,
+  });
+
+  const text = await res.text();
+  const body = text ? (safeParse(text) as unknown) : undefined;
+
+  if (!res.ok) {
+    throw new ApiRequestError(res.status, body as ApiErrorBody | undefined);
+  }
+  return body as T;
+}
+
 function safeParse(text: string): unknown {
   try {
     return JSON.parse(text);

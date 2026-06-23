@@ -184,7 +184,10 @@ describe('ProcedureListPage', () => {
 
 describe('ProcedureDetailPage', () => {
   it('renders full detail with contracts and supplier', async () => {
-    mockFetch({ '/api/procedures/IA-0123-2026': sampleDetail });
+    mockFetch({
+      '/api/procedures/IA-0123-2026': sampleDetail,
+      '/api/procedures/IA-0123-2026/documents': { data: [] },
+    });
     render(treeAt('/procedimientos/IA-0123-2026'));
 
     await waitFor(() => {
@@ -201,12 +204,72 @@ describe('ProcedureDetailPage', () => {
     // Supplier name appears in both SuppliersCard and the contract's Proveedor detail
     expect(screen.getAllByText('Proveedor SA de CV').length).toBeGreaterThan(0);
 
-    // Documents placeholder + official URL link
+    // Documents section offers the fetch button + the official URL link (UI-3).
+    // (findByRole waits for the documents query to resolve before the button appears.)
+    expect(await screen.findByRole('button', { name: /Obtener documentos/ })).toBeInTheDocument();
     expect(screen.getByText(/Ver en sitio oficial/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Ver en sitio oficial/ })).toHaveAttribute(
       'href',
       'https://comprasmx.buengobierno.gob.test/anuncio/123',
     );
+  });
+
+  it('fetches documents on demand and shows them after success (UI-3)', async () => {
+    const user = userEvent.setup();
+    mockFetch({
+      '/api/procedures/IA-0123-2026': sampleDetail,
+      '/api/procedures/IA-0123-2026/documents': { data: [] },
+      '/api/procedures/IA-0123-2026/documents/fetch': {
+        status: 'fetched',
+        documents: [
+          {
+            id: 501,
+            titulo: 'Bases de licitación.pdf',
+            tipo: 'PDF',
+            url_fuente: 'https://comprasmx.test/bases.pdf',
+            archivo_local: 'Bases_de_licitacion.pdf',
+            fecha_descarga: '2026-06-23T10:00:00.000Z',
+            estatus: 'fetched',
+            download_url: '/api/procedures/IA-0123-2026/documents/501/download',
+          },
+        ],
+      },
+    });
+    render(treeAt('/procedimientos/IA-0123-2026'));
+
+    const button = await screen.findByRole('button', { name: /Obtener documentos/ });
+    await user.click(button);
+
+    // The fetch POST returns the documents; setQueryData writes them to the
+    // documents cache → the list re-renders with the freshly-fetched anexo.
+    await waitFor(() => {
+      expect(screen.getByText('Bases de licitación.pdf')).toBeInTheDocument();
+    });
+    // Download link appears because archivo_local is set.
+    expect(screen.getByRole('link', { name: /Descargar/ })).toBeInTheDocument();
+  });
+
+  it('shows a graceful captcha-blocked notice with retry (DF-6, UI-4)', async () => {
+    const user = userEvent.setup();
+    mockFetch({
+      '/api/procedures/IA-0123-2026': sampleDetail,
+      '/api/procedures/IA-0123-2026/documents': { data: [] },
+      '/api/procedures/IA-0123-2026/documents/fetch': {
+        status: 'captcha_blocked',
+        documents: [],
+        message: 'ComprasMX rechazó la solicitud (reCAPTCHA v3).',
+      },
+    });
+    render(treeAt('/procedimientos/IA-0123-2026'));
+
+    const button = await screen.findByRole('button', { name: /Obtener documentos/ });
+    await user.click(button);
+
+    await waitFor(() => {
+      expect(screen.getByText(/ComprasMX rechazó la solicitud/)).toBeInTheDocument();
+    });
+    // Retry action available (DF-6 allow retry).
+    expect(screen.getByRole('button', { name: /Reintentar/ })).toBeInTheDocument();
   });
 
   it('renders 404 empty state for unknown procedure', async () => {

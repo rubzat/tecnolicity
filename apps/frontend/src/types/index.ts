@@ -230,3 +230,36 @@ export interface ApiErrorBody {
   message?: string;
   issues?: { path: string; message: string }[];
 }
+
+// --- Documents (Phase 5: on-demand Playwright fetch) ---
+
+export type DocumentEstatus = 'pending' | 'fetched' | 'failed' | 'captcha_blocked';
+
+export interface DocumentItem {
+  id: number;
+  titulo: string | null;
+  tipo: string | null;
+  url_fuente: string | null;
+  archivo_local: string | null;
+  fecha_descarga: string | null;
+  estatus: string;
+  error?: string;
+  /** Present only when a local file was downloaded (archivo_local set). */
+  download_url?: string;
+}
+
+export type FetchDocumentsStatus =
+  | 'cached'
+  | 'fetched'
+  | 'captcha_blocked'
+  | 'failed'
+  | 'timeout'
+  | 'no_anexos'
+  | 'no_anuncio_url'
+  | 'disabled';
+
+export interface FetchDocumentsResponse {
+  status: FetchDocumentsStatus;
+  documents: DocumentItem[];
+  message?: string;
+}

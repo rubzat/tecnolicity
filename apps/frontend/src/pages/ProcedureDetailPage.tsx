@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useProcedureDetail } from '../api/queries';
 import { ApiRequestError } from '../api/client';
 import { Badge, Card, CardHeader, EmptyState, ErrorBanner, Spinner, estatusTone } from '../components/ui';
+import { DocumentsSection } from '../components/DocumentsSection';
 import { formatCurrency, formatDate, formatDateTime } from '../utils/format';
 import type { AmountView, ContractView, ProcedureDetail } from '../types';
 
@@ -53,7 +54,7 @@ export function ProcedureDetailPage() {
         <div className="space-y-5 lg:col-span-2">
           <InfoGrid procedure={data} />
           <ContractsCard contracts={data.contracts} />
-          <DocumentsCard direccionAnuncio={data.direccion_anuncio} />
+          <DocumentsSection numeroProcedimiento={data.numero_procedimiento} direccionAnuncio={data.direccion_anuncio} />
         </div>
         <div className="space-y-5">
           <InstitutionCard procedure={data} />
@@ -301,46 +302,6 @@ function Th({ children }: { children: React.ReactNode }) {
 }
 function Td({ children }: { children: React.ReactNode }) {
   return <td className="border-b border-slate-100 px-2 py-1">{children}</td>;
-}
-
-/**
- * Documents section — PLACEHOLDER (PR4 not done yet). The Playwright on-demand
- * worker is a separate PR; for now we just surface the official URL so users
- * can browse the anuncio directly on Compras MX.
- */
-function DocumentsCard({ direccionAnuncio }: { direccionAnuncio: string | null }) {
-  return (
-    <Card>
-      <CardHeader title="Documentos" subtitle="Bajo demanda" />
-      <div className="px-5 py-6">
-        {direccionAnuncio ? (
-          <>
-            <p className="text-sm text-slate-600">
-              Documentos disponibles próximamente. La obtención bajo demanda desde Compras MX se habilitará en una
-              próxima versión del portal.
-            </p>
-            <p className="mt-3">
-              <a
-                href={direccionAnuncio}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-sm font-medium text-institucional hover:underline"
-              >
-                Ver en sitio oficial
-                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M14 5h5m0 0v5m0-5l-7 7M19 14v5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
-                </svg>
-              </a>
-            </p>
-          </>
-        ) : (
-          <p className="text-sm text-slate-500">
-            Este procedimiento no tiene dirección de anuncio registrada para consulta de documentos.
-          </p>
-        )}
-      </div>
-    </Card>
-  );
 }
 
 function booleanLabel(v: boolean | null | undefined): string | null {
