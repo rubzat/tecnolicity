@@ -5,7 +5,9 @@ import { COLUMNS } from '../../infrastructure/csv/columns';
 /** Build a 73-column row prefilled with empty strings, then apply overrides. */
 function makeRow(overrides: Partial<Record<number, string>> = {}): string[] {
   const row = new Array<string>(COLUMNS.direccionAnuncio + 1).fill('');
-  for (const [k, v] of Object.entries(overrides)) row[Number(k)] = v;
+  for (const [k, v] of Object.entries(overrides)) {
+    if (typeof v === 'string') row[Number(k)] = v;
+  }
   return row;
 }
 
