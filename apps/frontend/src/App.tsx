@@ -1,9 +1,19 @@
+import { lazy, Suspense, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from './components/Layout';
 import { ProcedureListPage } from './pages/ProcedureListPage';
-import { ProcedureDetailPage } from './pages/ProcedureDetailPage';
-import { AnalyticsPage } from './pages/AnalyticsPage';
+import { Spinner } from './components/ui';
+
+// Code-split the heavier pages (detail + analytics pull in recharts) so the
+// initial list-page bundle stays slim. The list page is the landing route,
+// so it's bundled eagerly.
+const ProcedureDetailPage = lazy(() =>
+  import('./pages/ProcedureDetailPage').then((m) => ({ default: m.ProcedureDetailPage })),
+);
+const AnalyticsPage = lazy(() =>
+  import('./pages/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })),
+);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -14,13 +24,22 @@ const queryClient = new QueryClient({
   },
 });
 
+/** Loading fallback for lazy routes. */
+function RouteFallback({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex items-center justify-center gap-2 py-16 text-sm text-slate-500">
+      <Spinner className="h-5 w-5 text-institucional" /> {children}
+    </div>
+  );
+}
+
 /**
  * Root application: providers (QueryClient + Router) and route table.
  *
  * Routes:
- * - `/`                         → list page
- * - `/procedimientos/:numero`   → detail page
- * - `/analytics`                → analytics dashboard
+ * - `/`                         → list page (eager)
+ * - `/procedimientos/:numero`   → detail page (lazy)
+ * - `/analytics`                → analytics dashboard (lazy)
  * - everything else             → redirect to `/`
  */
 export function App() {
@@ -30,8 +49,22 @@ export function App() {
         <Layout>
           <Routes>
             <Route path="/" element={<ProcedureListPage />} />
-            <Route path="/procedimientos/:numeroProcedimiento" element={<ProcedureDetailPage />} />
-            <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route
+              path="/procedimientos/:numeroProcedimiento"
+              element={
+                <Suspense fallback={<RouteFallback>Cargando procedimiento…</RouteFallback>}>
+                  <ProcedureDetailPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/analytics"
+              element={
+                <Suspense fallback={<RouteFallback>Cargando analíticas…</RouteFallback>}>
+                  <AnalyticsPage />
+                </Suspense>
+              }
+            />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Layout>
