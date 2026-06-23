@@ -22,11 +22,15 @@ import { MarketIntelligence } from '../application/market/market-intelligence.js
 import { FetchDocuments } from '../application/documents/fetch-documents.js';
 import { ListDocuments } from '../application/documents/list-documents.js';
 import { DownloadDocument } from '../application/documents/download-document.js';
+import { ScrapeVigentes } from '../application/vigentes/scrape-vigentes.js';
 import { DrizzleMarketRepository } from '../infrastructure/db/repositories/market-repository.js';
+import { DrizzleVigenteRepository } from '../infrastructure/db/repositories/vigente-repository.js';
+import { VigenteScraper } from '../infrastructure/scraping/vigente-scraper.js';
 import { createProceduresRouter } from './routes/procedures.js';
 import { createAnalyticsRouter } from './routes/analytics.js';
 import { createMarketRouter } from './routes/market.js';
 import { createDocumentsRouter } from './routes/documents.js';
+import { createVigentesRouter } from './routes/vigentes.js';
 
 type Db = NodePgDatabase<typeof schema>;
 
@@ -74,6 +78,19 @@ export function createApp(dbClient: Db = db): Express {
   const listDocuments = new ListDocuments(documentRepo);
   const downloadDocument = new DownloadDocument(documentRepo, storage);
 
+  // Vigente-scraper composition root (PR7). The scraper loads ComprasMX via
+  // Playwright (reCAPTCHA bypass) and upserts into vigente_procedures; the API
+  // reads from that table. The scrape trigger runs synchronously (it's an
+  // on-demand refresh, ~50s for ~1.1k rows).
+  const vigenteRepo = new DrizzleVigenteRepository(dbClient);
+  const vigenteScraper = new VigenteScraper({
+    maxPages: env.SCRAPER_MAX_PAGES,
+    delayMs: env.SCRAPER_DELAY_MS,
+    timeoutMs: env.SCRAPER_TIMEOUT_MS,
+    pageSize: env.SCRAPER_PAGE_SIZE,
+  });
+  const scrapeVigentes = new ScrapeVigentes({ scraper: vigenteScraper, repository: vigenteRepo });
+
   // Health check (also serves as the DB liveness probe).
   app.get('/api/health', (_req: Request, res: Response) => {
     res.json({ status: 'ok', uptime: process.uptime() });
@@ -84,6 +101,7 @@ export function createApp(dbClient: Db = db): Express {
   app.use('/api/procedures', createDocumentsRouter({ fetch: fetchDocuments, list: listDocuments, download: downloadDocument }));
   app.use('/api/analytics', createAnalyticsRouter({ analytics }));
   app.use('/api/market', createMarketRouter({ market }));
+  app.use('/api/vigentes', createVigentesRouter({ repository: vigenteRepo, scrape: scrapeVigentes }));
 
   // 404 for unknown /api routes.
   app.use('/api', (_req: Request, res: Response) => {
