@@ -27,8 +27,9 @@ data/*.csv
 data/*.xlsx
 data/*.xls
 
-# Local document storage (Playwright downloads)
-storage/
+# Local document storage (Playwright downloads) — runtime output only.
+# Scoped so source dirs named "storage" (domain/storage, infrastructure/storage) are tracked.
+/apps/backend/storage/
 
 # Editor / OS
 .DS_Store
