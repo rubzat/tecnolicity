@@ -55,13 +55,21 @@ function buildFilter(f: VigenteFilter) {
     );
   }
   if (f.q) {
-    const like = `%${f.q}%`;
-    conds.push(
-      or(
-        ilike(vigenteProcedures.numeroProcedimiento, like),
-        ilike(vigenteProcedures.nombre, like),
-      )!,
-    );
+    // Support comma-separated keywords: "software,camara,CCTV" → OR match.
+    const keywords = f.q
+      .split(',')
+      .map((k) => k.trim())
+      .filter((k) => k.length > 0);
+    if (keywords.length > 0) {
+      const keywordConds = keywords.flatMap((kw) => {
+        const like = `%${kw}%`;
+        return [
+          ilike(vigenteProcedures.numeroProcedimiento, like),
+          ilike(vigenteProcedures.nombre, like),
+        ];
+      });
+      conds.push(or(...keywordConds)!);
+    }
   }
   return conds.length === 0 ? undefined : and(...conds);
 }
