@@ -20,7 +20,7 @@ import {
   expedientes,
   contracts,
 } from '../../../db/schema/index.js';
-import { segmentColumnMatches } from '../../../application/market/segment-matcher.js';
+import { buildProcedureSegmentCondition } from '../../../application/market/procedure-segment.js';
 import { computePagination } from '../../../application/queries/pagination.js';
 import type {
   MarketRepository,
@@ -463,31 +463,13 @@ export class DrizzleMarketRepository implements MarketRepository {
   // ────────────────────────────────────────────── shared segment clause ──
 
   /**
-   * Build the segment condition applied at the PROCEDURE level: the procedure's
-   * own descripcion matches, OR it has a contract whose descripcion/titulo
-   * matches, OR it has an expediente whose titulo matches.
-   *
-   * CRITICAL for performance: this is emitted as a single UNION subquery
-   * (`procedures.id IN (SELECT … UNION SELECT … UNION SELECT …)`), NOT an
-   * `OR (… IN (…) OR … IN (…))` expression. An OR-with-subqueries forces a full
-   * seq scan on procedures (the planner cannot use the trigram index through the
-   * OR). The UNION lets each branch independently use its `pg_trgm` GIN index:
-   * measured ~31s → ~2s for the broad 35-keyword default on 312K contracts.
-   *
-   * `pattern` is bound as a parameter (never raw-interpolated) on every branch.
+   * Build the segment condition applied at the PROCEDURE level. Delegates to
+   * the shared {@link buildProcedureSegmentCondition} helper (extracted so the
+   * Product Intelligence module can reuse the exact same matcher). See that
+   * helper for the performance rationale (UNION subquery + tsvector GIN).
    */
   private segmentMatchesProcedure(pattern: string): SQL {
-    return sql`${procedures.id} IN (
-      SELECT ${procedures.id} FROM ${procedures}
-        WHERE ${segmentColumnMatches(procedures.descripcion, pattern)}
-      UNION
-      SELECT ${contracts.procedureId} FROM ${contracts}
-        WHERE ${segmentColumnMatches(contracts.descripcion, pattern)}
-           OR ${segmentColumnMatches(contracts.titulo, pattern)}
-      UNION
-      SELECT ${expedientes.procedureId} FROM ${expedientes}
-        WHERE ${segmentColumnMatches(expedientes.titulo, pattern)}
-    )`;
+    return buildProcedureSegmentCondition(pattern);
   }
 }
 

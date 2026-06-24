@@ -76,3 +76,69 @@ export const supplierSearchSchema = z.object({
 });
 
 export type SupplierSearchQuery = z.infer<typeof supplierSearchSchema>;
+
+/**
+ * Product Price Intelligence (PR10) — keyword parsing.
+ *
+ * The Product endpoints take a comma-separated `q` (NOT a pre-parsed tsquery —
+ * the use case builds the tsquery via `buildSegmentTsQuery`). There is NO
+ * default keyword set: if `q` is absent/empty the request is rejected by the
+ * zod schema; if every keyword trims to empty after splitting, it is also
+ * rejected here so the use case never sees an empty array.
+ *
+ * Mirrors {@link parseSegmentParam}'s normalization (split on commas/newlines,
+ * trim, collapse internal whitespace, drop empties + case-insensitive dups),
+ * but with NO fallback.
+ */
+export function parseProductKeywords(raw: string): string[] {
+  const seen = new Set<string>();
+  const keywords: string[] = [];
+  for (const part of raw.split(/[\n,]+/)) {
+    const kw = part.trim().replace(/\s+/g, ' ');
+    if (!kw) continue;
+    const key = kw.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    keywords.push(kw);
+  }
+  return keywords;
+}
+
+/**
+ * Product Price Intelligence schemas (PR10).
+ *
+ * `q` is a comma-separated keyword list (1..500 chars — generous ceiling so
+ * many keywords fit, but bounded to keep the URL finite). `group_by` defaults
+ * to "year" and must be one of year | quarter | month. `limit` defaults to 10
+ * (max 50 — a top-N list never needs more), `page` defaults to 1, `page_size`
+ * defaults to 20 (max 100, same ceiling as the procedure list).
+ */
+const productKeywordField = z.string().trim().min(1).max(500);
+const productGroupByField = z.enum(['year', 'quarter', 'month']).default('year');
+const productLimitField = z.coerce.number().int().min(1).max(50).default(10);
+
+export const productPriceHistorySchema = z.object({
+  q: productKeywordField,
+  group_by: productGroupByField,
+});
+
+export const productDistributionSchema = z.object({
+  q: productKeywordField,
+});
+
+export const productSuppliersSchema = z.object({
+  q: productKeywordField,
+  limit: productLimitField,
+});
+
+export const productTopContractsSchema = z.object({
+  q: productKeywordField,
+  page: z.coerce.number().int().min(1).default(1),
+  page_size: z.coerce.number().int().min(1).max(100).default(20),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+});
+
+export type ProductPriceHistoryQuery = z.infer<typeof productPriceHistorySchema>;
+export type ProductDistributionQuery = z.infer<typeof productDistributionSchema>;
+export type ProductSuppliersQuery = z.infer<typeof productSuppliersSchema>;
+export type ProductTopContractsQuery = z.infer<typeof productTopContractsSchema>;
