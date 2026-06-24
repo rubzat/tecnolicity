@@ -416,3 +416,85 @@ export interface FetchVigenteDetailResponse extends VigenteDetalleResponse {
   status: VigenteDetailStatus;
   message?: string;
 }
+
+// --- Supplier Intelligence (PR9) ---
+
+export interface SupplierSearchResult {
+  id: number;
+  rfc: string;
+  nombre: string;
+  estratificacion: string | null;
+  total_contracts: number;
+  total_amount: number;
+}
+
+export interface SupplierSearchPage {
+  data: SupplierSearchResult[];
+  pagination: PaginationMeta;
+}
+
+export interface SupplierHeader {
+  rfc: string;
+  nombre: string;
+  estratificacion: string | null;
+  nacionalidad: string | null;
+  pais: string | null;
+  folio_rupc: string | null;
+}
+
+export interface SupplierSummary {
+  total_contracts: number;
+  total_amount: number;
+  avg_amount: number;
+  median_amount: number;
+  years_active: string[];
+  first_contract: string | null;
+  last_contract: string | null;
+  active_contracts: number;
+  contracts_without_amount: number;
+}
+
+export interface SupplierInstitution {
+  nombre: string;
+  contracts: number;
+  amount: number;
+  share_pct: number;
+}
+
+export interface SupplierTipoContratacion {
+  tipo: string;
+  contracts: number;
+  amount: number;
+}
+
+export interface SupplierYearBucket {
+  year: number;
+  contracts: number;
+  amount: number;
+}
+
+export interface SupplierTopContract {
+  numero_procedimiento: string;
+  titulo: string | null;
+  descripcion: string | null;
+  importe_drc: number | null;
+  institucion: string;
+  fecha_firma: string | null;
+  estatus_contrato: string | null;
+}
+
+export interface SupplierMarketPosition {
+  rank_by_amount: number;
+  total_suppliers: number;
+  percentile: number;
+}
+
+export interface SupplierProfile {
+  supplier: SupplierHeader;
+  summary: SupplierSummary;
+  by_institution: SupplierInstitution[];
+  by_tipo_contratacion: SupplierTipoContratacion[];
+  by_year: SupplierYearBucket[];
+  top_contracts: SupplierTopContract[];
+  market_position: SupplierMarketPosition | null;
+}

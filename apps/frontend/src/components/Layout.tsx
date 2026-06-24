@@ -10,6 +10,7 @@ const navItems = [
   { to: '/', label: 'Inicio', end: true },
   { to: '/oportunidades', label: 'Oportunidades', end: false },
   { to: '/mercado', label: 'Mercado', end: false },
+  { to: '/proveedores', label: 'Proveedores', end: false },
   { to: '/analytics', label: 'Analytics', end: false },
 ];
 

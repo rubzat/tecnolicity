@@ -6,12 +6,15 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ProcedureListPage } from '../ProcedureListPage';
 import { ProcedureDetailPage } from '../ProcedureDetailPage';
 import { AnalyticsPage } from '../AnalyticsPage';
+import { SuppliersPage } from '../SuppliersPage';
 import { Layout } from '../../components/Layout';
 import type {
   ProcedureListPage as ProcedureListPageDTO,
   ProcedureDetail,
   AnalyticsSummary,
   TipoContratacionResult,
+  SupplierProfile,
+  SupplierSearchPage,
 } from '../../types';
 
 /**
@@ -31,6 +34,7 @@ function treeAt(route: string) {
             <Route path="/" element={<ProcedureListPage />} />
             <Route path="/procedimientos/:numeroProcedimiento" element={<ProcedureDetailPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route path="/proveedores" element={<SuppliersPage />} />
           </Routes>
         </Layout>
       </MemoryRouter>
@@ -315,6 +319,122 @@ describe('Layout navigation', () => {
     const nav = screen.getByRole('navigation');
     expect(within(nav).getByText('Inicio')).toBeInTheDocument();
     expect(within(nav).getByText('Analytics')).toBeInTheDocument();
+  });
+
+  it('includes the Proveedores nav link', async () => {
+    mockFetch({ '/api/procedures': sampleList });
+    render(treeAt('/'));
+    const nav = screen.getByRole('navigation');
+    expect(within(nav).getByText('Proveedores')).toBeInTheDocument();
+  });
+});
+
+const sampleSupplierSearch: SupplierSearchPage = {
+  data: [
+    {
+      id: 1,
+      rfc: 'AXT940727FP8',
+      nombre: 'AXTEL S A B DE C V',
+      estratificacion: 'NO MIPYME',
+      total_contracts: 88,
+      total_amount: 1064434284.07,
+    },
+  ],
+  pagination: { page: 1, page_size: 10, total: 1, total_pages: 1 },
+};
+
+const sampleSupplierProfile: SupplierProfile = {
+  supplier: {
+    rfc: 'AXT940727FP8',
+    nombre: 'AXTEL S A B DE C V',
+    estratificacion: 'NO MIPYME',
+    nacionalidad: 'MEXICANA',
+    pais: 'MX',
+    folio_rupc: '6404',
+  },
+  summary: {
+    total_contracts: 88,
+    total_amount: 1064434284.07,
+    avg_amount: 12095844.14,
+    median_amount: 350068.96,
+    years_active: ['2024', '2025', '2026'],
+    first_contract: '2024-01-01',
+    last_contract: '2026-06-19',
+    active_contracts: 26,
+    contracts_without_amount: 0,
+  },
+  by_institution: [
+    { nombre: 'SERVICIO DE ADMINISTRACION TRIBUTARIA', contracts: 1, amount: 636081943.63, share_pct: 59.76 },
+  ],
+  by_tipo_contratacion: [
+    { tipo: 'SERVICIOS', contracts: 79, amount: 995738248.07 },
+    { tipo: 'ADQUISICIONES', contracts: 8, amount: 67309218 },
+  ],
+  by_year: [
+    { year: 2024, contracts: 26, amount: 758977860.27 },
+    { year: 2025, contracts: 43, amount: 281941082.33 },
+  ],
+  top_contracts: [
+    {
+      numero_procedimiento: 'LA-06-E00-006E00001-N-17-2024',
+      titulo: 'SERVICIO DE VENTANILLA UNICA VUCEM 3',
+      descripcion: 'VUCEM',
+      importe_drc: 636081943.63,
+      institucion: 'SERVICIO DE ADMINISTRACION TRIBUTARIA',
+      fecha_firma: '2024-09-18',
+      estatus_contrato: 'FORMALIZADO',
+    },
+  ],
+  market_position: { rank_by_amount: 239, total_suppliers: 60298, percentile: 99.61 },
+};
+
+describe('SuppliersPage', () => {
+  it('shows the empty-state prompt before any search', async () => {
+    mockFetch({});
+    render(treeAt('/proveedores'));
+    // Page heading + the empty-state prompt (nav also has a "Proveedores" link,
+    // so scope to the heading role).
+    expect(screen.getByRole('heading', { name: 'Proveedores' })).toBeInTheDocument();
+    expect(screen.getByText(/Buscá un proveedor arriba/)).toBeInTheDocument();
+  });
+
+  it('searches and renders the full profile dashboard when a supplier is picked', async () => {
+    const user = userEvent.setup();
+    const fetchMock = mockFetch({
+      '/api/suppliers/search': sampleSupplierSearch,
+      '/api/suppliers/AXT940727FP8/profile': sampleSupplierProfile,
+    });
+    render(treeAt('/proveedores'));
+
+    // Type enough to pass the min-length gate + debounce.
+    const input = screen.getByPlaceholderText(/Buscar proveedor por nombre o RFC/);
+    await user.type(input, 'axtel');
+
+    // After debounce, the dropdown shows the supplier.
+    await waitFor(() => {
+      expect(screen.getByText('AXTEL S A B DE C V')).toBeInTheDocument();
+    });
+    expect(screen.getByText('AXT940727FP8')).toBeInTheDocument();
+
+    // The search request fired with the query param.
+    const searchCalls = fetchMock.mock.calls.filter((c) => String(c[0]).includes('/api/suppliers/search'));
+    expect(searchCalls.length).toBeGreaterThan(0);
+
+    // Pick the supplier → profile loads.
+    await user.click(screen.getByRole('button', { name: /AXTEL S A B DE C V/ }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Evolución por año')).toBeInTheDocument();
+    });
+    // Summary labels.
+    expect(screen.getByText('Contratos totales')).toBeInTheDocument();
+    expect(screen.getByText('Contratos vigentes')).toBeInTheDocument();
+    // Market-position rank is rendered.
+    expect(screen.getByText(/de 60,298/)).toBeInTheDocument();
+    // The institution table + tipo chart + top contracts sections render.
+    expect(screen.getByText('Dependencias que le compran')).toBeInTheDocument();
+    expect(screen.getByText('Tipos de contratos')).toBeInTheDocument();
+    expect(screen.getByText('Contratos más grandes')).toBeInTheDocument();
   });
 });
 
