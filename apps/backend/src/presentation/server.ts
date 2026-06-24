@@ -19,18 +19,21 @@ import { ListProcedures } from '../application/queries/list-procedures.js';
 import { GetProcedureDetail } from '../application/queries/get-procedure-detail.js';
 import { ComputeAnalytics } from '../application/queries/compute-analytics.js';
 import { MarketIntelligence } from '../application/market/market-intelligence.js';
+import { SupplierIntelligence } from '../application/suppliers/supplier-intelligence.js';
 import { FetchDocuments } from '../application/documents/fetch-documents.js';
 import { ListDocuments } from '../application/documents/list-documents.js';
 import { DownloadDocument } from '../application/documents/download-document.js';
 import { ScrapeVigentes } from '../application/vigentes/scrape-vigentes.js';
 import { FetchVigenteDetail } from '../application/vigentes/fetch-detail.js';
 import { DrizzleMarketRepository } from '../infrastructure/db/repositories/market-repository.js';
+import { DrizzleSupplierRepository } from '../infrastructure/db/repositories/supplier-repository.js';
 import { DrizzleVigenteRepository } from '../infrastructure/db/repositories/vigente-repository.js';
 import { VigenteScraper } from '../infrastructure/scraping/vigente-scraper.js';
 import { VigenteDetailFetcher } from '../infrastructure/scraping/vigente-detail-fetcher.js';
 import { createProceduresRouter } from './routes/procedures.js';
 import { createAnalyticsRouter } from './routes/analytics.js';
 import { createMarketRouter } from './routes/market.js';
+import { createSuppliersRouter } from './routes/suppliers.js';
 import { createDocumentsRouter } from './routes/documents.js';
 import { createVigentesRouter } from './routes/vigentes.js';
 import { startVigenteCron, stopVigenteCron } from '../infrastructure/scheduler/vigente-cron.js';
@@ -56,6 +59,12 @@ export function createApp(dbClient: Db = db): Express {
   const analytics = new ComputeAnalytics(repo);
   const marketRepo = new DrizzleMarketRepository(dbClient);
   const market = new MarketIntelligence(marketRepo);
+
+  // Supplier Intelligence composition root (PR9). Read-only aggregations over
+  // the existing suppliers/contracts tables (no schema change). Two endpoints:
+  // accent-insensitive search + full supplier profile analysis.
+  const supplierRepo = new DrizzleSupplierRepository(dbClient);
+  const supplierIntel = new SupplierIntelligence(supplierRepo);
 
   // Document-fetching composition root (Phase 5). The Playwright worker is
   // isolated from the query/analytics API: it runs through a concurrency-limited
@@ -116,6 +125,7 @@ export function createApp(dbClient: Db = db): Express {
   app.use('/api/procedures', createDocumentsRouter({ fetch: fetchDocuments, list: listDocuments, download: downloadDocument }));
   app.use('/api/analytics', createAnalyticsRouter({ analytics }));
   app.use('/api/market', createMarketRouter({ market }));
+  app.use('/api/suppliers', createSuppliersRouter({ suppliers: supplierIntel }));
   app.use('/api/vigentes', createVigentesRouter({ repository: vigenteRepo, scrape: scrapeVigentes, fetchDetail: fetchVigenteDetail }));
 
   // 404 for unknown /api routes.
