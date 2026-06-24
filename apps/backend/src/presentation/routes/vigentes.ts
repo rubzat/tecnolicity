@@ -6,20 +6,27 @@ import type {
   VigentePage,
 } from '../../domain/repositories/vigente-repository.js';
 import type { ScrapeVigentes } from '../../application/vigentes/scrape-vigentes.js';
+import type { FetchVigenteDetail } from '../../application/vigentes/fetch-detail.js';
 
 /**
  * Build the `/vigentes` router.
  *
  * Endpoints:
- *  - GET  /                    list (filters + pagination, sorted by deadline asc)
- *  - GET  /:numeroProcedimiento   detail
- *  - POST /scrape              trigger a live scrape (synchronous, returns summary)
+ *  - GET  /                                       list (filters + pagination)
+ *  - GET  /:numeroProcedimiento                   detail (summary fields)
+ *  - GET  /:numeroProcedimiento/detail            cached on-demand detail JSON (PR8)
+ *  - POST /:numeroProcedimiento/fetch-detail      trigger a Playwright fetch (PR8)
+ *  - POST /scrape                                 trigger a live scrape
  *
- * Use cases / repository are injected (hexagonal adapter).
+ * Use cases / repository are injected (hexagonal adapter). Route ordering:
+ * `:numeroProcedimiento/detail` and `:numeroProcedimiento/fetch-detail` are
+ * TWO segments, so they never collide with the single-segment `:numeroProcedimiento`
+ * route. `POST /scrape` is distinct from any `:numero` (numeros never equal "scrape").
  */
 export function createVigentesRouter(deps: {
   repository: VigenteRepository;
   scrape: ScrapeVigentes;
+  fetchDetail: FetchVigenteDetail;
 }): Router {
   const router = Router();
 
@@ -75,6 +82,77 @@ export function createVigentesRouter(deps: {
           return;
         }
         res.json(serialize(rec));
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  // GET /vigentes/:numeroProcedimiento/detail — cached on-demand detail (PR8).
+  // Returns the intercepted detalle/anexos/reqeconomicos JSON, or null fields
+  // when no fetch has happened yet. Never launches Playwright.
+  router.get(
+    '/:numeroProcedimiento/detail',
+    async (
+      req: Request<{ numeroProcedimiento: string }>,
+      res: Response,
+      next: NextFunction,
+    ) => {
+      try {
+        const numero = req.params.numeroProcedimiento;
+        const exists = await deps.repository.getByNumero(numero);
+        if (!exists) {
+          res.status(404).json({
+            error: 'not_found',
+            message: `No hay procedimiento vigente con numero_procedimiento '${numero}'`,
+          });
+          return;
+        }
+        const cache = await deps.repository.getDetalle(numero);
+        res.json({
+          detalle: cache?.detalleJson ?? null,
+          anexos: cache?.anexosJson ?? null,
+          reqeconomicos: cache?.reqeconomicosJson ?? null,
+          detalle_fetched_at: cache?.detalleFetchedAt
+            ? cache.detalleFetchedAt.toISOString()
+            : null,
+        });
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  // POST /vigentes/:numeroProcedimiento/fetch-detail — on-demand Playwright fetch (PR8).
+  // Loads the ComprasMX detail page, intercepts the 3 API responses, caches the
+  // result, and returns it. Takes ~8-15s on a cache miss; instant on a hit.
+  // Every operational outcome (even captcha_blocked / timeout / failed) is HTTP
+  // 200 — the `status` field tells the client what happened (graceful, #213).
+  router.post(
+    '/:numeroProcedimiento/fetch-detail',
+    async (
+      req: Request<{ numeroProcedimiento: string }>,
+      res: Response,
+      next: NextFunction,
+    ) => {
+      try {
+        const numero = req.params.numeroProcedimiento;
+        const result = await deps.fetchDetail.execute(numero);
+        if (!result) {
+          res.status(404).json({
+            error: 'not_found',
+            message: `No hay procedimiento vigente con numero_procedimiento '${numero}'`,
+          });
+          return;
+        }
+        res.status(200).json({
+          status: result.status,
+          detalle: result.detalle,
+          anexos: result.anexos,
+          reqeconomicos: result.reqeconomicos,
+          detalle_fetched_at: result.detalleFetchedAt,
+          ...(result.message ? { message: result.message } : {}),
+        });
       } catch (err) {
         next(err);
       }

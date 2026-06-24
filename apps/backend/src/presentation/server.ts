@@ -23,9 +23,11 @@ import { FetchDocuments } from '../application/documents/fetch-documents.js';
 import { ListDocuments } from '../application/documents/list-documents.js';
 import { DownloadDocument } from '../application/documents/download-document.js';
 import { ScrapeVigentes } from '../application/vigentes/scrape-vigentes.js';
+import { FetchVigenteDetail } from '../application/vigentes/fetch-detail.js';
 import { DrizzleMarketRepository } from '../infrastructure/db/repositories/market-repository.js';
 import { DrizzleVigenteRepository } from '../infrastructure/db/repositories/vigente-repository.js';
 import { VigenteScraper } from '../infrastructure/scraping/vigente-scraper.js';
+import { VigenteDetailFetcher } from '../infrastructure/scraping/vigente-detail-fetcher.js';
 import { createProceduresRouter } from './routes/procedures.js';
 import { createAnalyticsRouter } from './routes/analytics.js';
 import { createMarketRouter } from './routes/market.js';
@@ -92,6 +94,18 @@ export function createApp(dbClient: Db = db): Express {
   });
   const scrapeVigentes = new ScrapeVigentes({ scraper: vigenteScraper, repository: vigenteRepo });
 
+  // Vigente on-demand detail composition root (PR8). Loads ONE procedure's
+  // ComprasMX detail page via Playwright, intercepts the detalle/anexos/
+  // reqeconomicos responses, and caches them in vigente_procedures. Cache-first
+  // with a 24h TTL — repeated views are instant, the browser only runs on a miss.
+  const vigenteDetailFetcher = new VigenteDetailFetcher({ timeoutMs: env.SCRAPER_TIMEOUT_MS });
+  const fetchVigenteDetail = new FetchVigenteDetail({
+    repository: vigenteRepo,
+    fetcher: vigenteDetailFetcher,
+    cacheTtlMs: env.VIGENTE_DETAIL_CACHE_TTL_MS,
+    timeoutMs: env.SCRAPER_TIMEOUT_MS,
+  });
+
   // Health check (also serves as the DB liveness probe).
   app.get('/api/health', (_req: Request, res: Response) => {
     res.json({ status: 'ok', uptime: process.uptime() });
@@ -102,7 +116,7 @@ export function createApp(dbClient: Db = db): Express {
   app.use('/api/procedures', createDocumentsRouter({ fetch: fetchDocuments, list: listDocuments, download: downloadDocument }));
   app.use('/api/analytics', createAnalyticsRouter({ analytics }));
   app.use('/api/market', createMarketRouter({ market }));
-  app.use('/api/vigentes', createVigentesRouter({ repository: vigenteRepo, scrape: scrapeVigentes }));
+  app.use('/api/vigentes', createVigentesRouter({ repository: vigenteRepo, scrape: scrapeVigentes, fetchDetail: fetchVigenteDetail }));
 
   // 404 for unknown /api routes.
   app.use('/api', (_req: Request, res: Response) => {

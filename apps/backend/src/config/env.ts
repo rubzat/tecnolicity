@@ -41,6 +41,12 @@ const envSchema = z.object({
   SCRAPE_CRON_ENABLED: z.coerce.boolean().default(false),
   // Cron expression (standard 5-field). Default: 6:00 AM every day.
   SCRAPE_CRON_SCHEDULE: z.string().default('0 6 * * *'),
+
+  // --- Vigente on-demand detail (PR8) --------------------------------------
+  // How long a cached detalleProcedimiento is served before a re-fetch is
+  // forced (vigente procedures change: deadlines move, documents are added).
+  // Default: 24 hours.
+  VIGENTE_DETAIL_CACHE_TTL_MS: z.coerce.number().int().min(60_000).default(86_400_000),
 });
 
 const parsed = envSchema.safeParse(process.env);
