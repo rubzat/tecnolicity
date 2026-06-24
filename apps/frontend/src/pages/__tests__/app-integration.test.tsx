@@ -7,6 +7,7 @@ import { ProcedureListPage } from '../ProcedureListPage';
 import { ProcedureDetailPage } from '../ProcedureDetailPage';
 import { AnalyticsPage } from '../AnalyticsPage';
 import { SuppliersPage } from '../SuppliersPage';
+import { ProductsPage } from '../ProductsPage';
 import { Layout } from '../../components/Layout';
 import type {
   ProcedureListPage as ProcedureListPageDTO,
@@ -15,6 +16,10 @@ import type {
   TipoContratacionResult,
   SupplierProfile,
   SupplierSearchPage,
+  PriceHistory,
+  PriceDistribution,
+  ProductSuppliers,
+  ProductTopContractsPage,
 } from '../../types';
 
 /**
@@ -35,6 +40,7 @@ function treeAt(route: string) {
             <Route path="/procedimientos/:numeroProcedimiento" element={<ProcedureDetailPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/proveedores" element={<SuppliersPage />} />
+            <Route path="/productos" element={<ProductsPage />} />
           </Routes>
         </Layout>
       </MemoryRouter>
@@ -448,5 +454,131 @@ describe('formatCurrency integration', () => {
     // importe_total = 1,500,000 → compact format like "$1.5 M"
     const cell = screen.getByText(/\$/);
     expect(cell).toBeInTheDocument();
+  });
+});
+
+// --- Products (PR10) ---
+
+const samplePriceHistory: PriceHistory = {
+  periods: [
+    {
+      period: '2024',
+      contracts: 50,
+      avg_price: 1_000_000,
+      min_price: 100_000,
+      max_price: 5_000_000,
+      median_price: 800_000,
+      total_amount: 50_000_000,
+      stddev: 1_200_000,
+    },
+    {
+      period: '2025',
+      contracts: 80,
+      avg_price: 1_500_000,
+      min_price: 150_000,
+      max_price: 7_000_000,
+      median_price: 1_100_000,
+      total_amount: 120_000_000,
+      stddev: 1_800_000,
+    },
+  ],
+  overall: {
+    total_contracts: 130,
+    avg_price: 1_307_692,
+    median_price: 950_000,
+    min_price: 100_000,
+    max_price: 7_000_000,
+    total_amount: 170_000_000,
+  },
+  trend: 'increasing',
+};
+
+const sampleDistribution: PriceDistribution = {
+  buckets: [
+    { range: '< 10K', label: 'Menos de $10,000', count: 5 },
+    { range: '10K-100K', label: '$10,000 - $100,000', count: 12 },
+    { range: '100K-1M', label: '$100,000 - $1M', count: 40 },
+    { range: '1M-10M', label: '$1M - $10M', count: 60 },
+    { range: '10M-100M', label: '$10M - $100M', count: 10 },
+    { range: '>100M', label: 'Más de $100M', count: 3 },
+  ],
+};
+
+const sampleProductSuppliers: ProductSuppliers = {
+  suppliers: [
+    {
+      nombre: 'TECH SUPPLIER SA DE CV',
+      rfc: 'TSC990101AB1',
+      contracts: 15,
+      avg_price: 2_000_000,
+      min_price: 200_000,
+      max_price: 8_000_000,
+      total_amount: 30_000_000,
+    },
+  ],
+};
+
+const sampleTopContracts: ProductTopContractsPage = {
+  data: [
+    {
+      numero_procedimiento: 'IA-9999-2025',
+      titulo: 'Suministro de software',
+      descripcion: 'Licencias corporativas',
+      importe_drc: 8_000_000,
+      supplier_nombre: 'TECH SUPPLIER SA DE CV',
+      supplier_rfc: 'TSC990101AB1',
+      institucion_nombre: 'SECRETARÍA DE EJEMPLO',
+      fecha_firma: '2025-03-15',
+    },
+  ],
+  pagination: { page: 1, page_size: 10, total: 1, total_pages: 1 },
+};
+
+describe('ProductsPage', () => {
+  it('shows the empty-state prompt before any search', async () => {
+    mockFetch({});
+    render(treeAt('/productos'));
+    expect(screen.getByRole('heading', { name: 'Productos' })).toBeInTheDocument();
+    expect(screen.getByText(/Escribí palabras clave arriba/)).toBeInTheDocument();
+  });
+
+  it('renders the full dashboard after clicking Analizar', async () => {
+    const user = userEvent.setup();
+    const fetchMock = mockFetch({
+      '/api/products/price-history': samplePriceHistory,
+      '/api/products/distribution': sampleDistribution,
+      '/api/products/suppliers': sampleProductSuppliers,
+      '/api/products/top-contracts': sampleTopContracts,
+    });
+    render(treeAt('/productos'));
+
+    const input = screen.getByPlaceholderText(/software, licencia, sistema/);
+    await user.type(input, 'software, licencia');
+    await user.click(screen.getByRole('button', { name: 'Analizar' }));
+
+    // The price-history request fired with q=software,licencia.
+    const calls = fetchMock.mock.calls.filter((c) =>
+      String(c[0]).includes('/api/products/price-history'),
+    );
+    expect(calls.length).toBeGreaterThan(0);
+    expect(String(calls[0]![0])).toContain('q=software%2Clicencia');
+
+    // All four sections render with their headings.
+    await waitFor(() => {
+      expect(screen.getByText('Evolución de precios')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Distribución de precios')).toBeInTheDocument();
+    expect(screen.getByText('Proveedores y precios')).toBeInTheDocument();
+    expect(screen.getByText('Contratos más grandes')).toBeInTheDocument();
+
+    // Summary metric values are rendered.
+    expect(screen.getByText('Contratos con precio')).toBeInTheDocument();
+    // The trend card shows an upward arrow with the pct delta.
+    expect(screen.getByText(/↑/)).toBeInTheDocument();
+
+    // The supplier row + top-contract row render. The supplier name appears in
+    // BOTH the suppliers table and the top-contracts row → use getAllByText.
+    expect(screen.getAllByText('TECH SUPPLIER SA DE CV').length).toBeGreaterThan(0);
+    expect(screen.getByText('IA-9999-2025')).toBeInTheDocument();
   });
 });

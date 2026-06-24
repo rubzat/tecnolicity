@@ -20,6 +20,9 @@ const MarketPage = lazy(() =>
 const SuppliersPage = lazy(() =>
   import('./pages/SuppliersPage').then((m) => ({ default: m.SuppliersPage })),
 );
+const ProductsPage = lazy(() =>
+  import('./pages/ProductsPage').then((m) => ({ default: m.ProductsPage })),
+);
 const OpportunitiesPage = lazy(() =>
   import('./pages/OpportunitiesPage').then((m) => ({ default: m.OpportunitiesPage })),
 );
@@ -50,6 +53,7 @@ function RouteFallback({ children }: { children: ReactNode }) {
  * - `/oportunidades`            → currently-open vigente bids (lazy)
  * - `/mercado`                  → market intelligence dashboard (lazy)
  * - `/proveedores`              → supplier intelligence (search + profile) (lazy)
+ * - `/productos`                → product price intelligence (lazy)
  * - `/procedimientos/:numero`   → detail page (lazy)
  * - `/analytics`                → analytics dashboard (lazy)
  * - everything else             → redirect to `/`
@@ -82,6 +86,14 @@ export function App() {
               element={
                 <Suspense fallback={<RouteFallback>Cargando proveedores…</RouteFallback>}>
                   <SuppliersPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/productos"
+              element={
+                <Suspense fallback={<RouteFallback>Cargando productos…</RouteFallback>}>
+                  <ProductsPage />
                 </Suspense>
               }
             />

@@ -498,3 +498,74 @@ export interface SupplierProfile {
   top_contracts: SupplierTopContract[];
   market_position: SupplierMarketPosition | null;
 }
+
+// --- Product Price Intelligence (PR10) ---
+
+export type PriceGroupBy = 'year' | 'quarter' | 'month';
+export type TrendDirection = 'increasing' | 'decreasing' | 'stable';
+
+export interface PricePeriod {
+  period: string;
+  contracts: number;
+  avg_price: number;
+  min_price: number;
+  max_price: number;
+  median_price: number;
+  total_amount: number;
+  stddev: number;
+}
+
+export interface PriceOverall {
+  total_contracts: number;
+  avg_price: number;
+  median_price: number;
+  min_price: number;
+  max_price: number;
+  total_amount: number;
+}
+
+export interface PriceHistory {
+  periods: PricePeriod[];
+  overall: PriceOverall;
+  trend: TrendDirection;
+}
+
+export interface PriceBucket {
+  range: string;
+  label: string;
+  count: number;
+}
+
+export interface PriceDistribution {
+  buckets: PriceBucket[];
+}
+
+export interface ProductSupplier {
+  nombre: string;
+  rfc: string;
+  contracts: number;
+  avg_price: number;
+  min_price: number;
+  max_price: number;
+  total_amount: number;
+}
+
+export interface ProductSuppliers {
+  suppliers: ProductSupplier[];
+}
+
+export interface ProductTopContract {
+  numero_procedimiento: string;
+  titulo: string | null;
+  descripcion: string | null;
+  importe_drc: number;
+  supplier_nombre: string | null;
+  supplier_rfc: string | null;
+  institucion_nombre: string;
+  fecha_firma: string | null;
+}
+
+export interface ProductTopContractsPage {
+  data: ProductTopContract[];
+  pagination: PaginationMeta;
+}

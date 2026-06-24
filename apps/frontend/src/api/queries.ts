@@ -12,6 +12,10 @@ import type {
   MarketExpiringContract,
   MarketOpportunity,
   MarketOverview,
+  PriceDistribution,
+  PriceHistory,
+  ProductSuppliers,
+  ProductTopContractsPage,
   ProcedureDetail,
   ProcedureFilter,
   ProcedureListPage,
@@ -373,6 +377,77 @@ export function useSupplierProfile(rfc: string | null) {
       return apiGet<SupplierProfile>(`/suppliers/${encodeURIComponent(rfc)}/profile`, undefined, { signal });
     },
     enabled: Boolean(rfc),
+    staleTime: 60_000,
+  });
+}
+
+// --- Product Price Intelligence (PR10) ---
+
+/**
+ * The backend expects a comma-separated `q` keyword list (the use case parses
+ * it into a tsquery). Hooks accept the already-joined string so the cache key
+ * stays stable across renders — pages typically keep `q` in state and only
+ * flip `enabled` on "Analizar". Every hook stays disabled until enabled &&
+ * q is non-empty, mirroring the Market hooks.
+ */
+function productQ(keywords: string[]): { q: string } {
+  return { q: keywords.join(',') };
+}
+
+export function useProductPriceHistory(
+  keywords: string[],
+  groupBy: 'year' | 'quarter' | 'month',
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: ['products', 'price-history', keywords, groupBy],
+    queryFn: ({ signal }) =>
+      apiGet<PriceHistory>(
+        '/products/price-history',
+        { ...productQ(keywords), group_by: groupBy },
+        { signal },
+      ),
+    enabled: enabled && keywords.length > 0,
+    staleTime: 60_000,
+  });
+}
+
+export function useProductDistribution(keywords: string[], enabled: boolean) {
+  return useQuery({
+    queryKey: ['products', 'distribution', keywords],
+    queryFn: ({ signal }) =>
+      apiGet<PriceDistribution>('/products/distribution', productQ(keywords), { signal }),
+    enabled: enabled && keywords.length > 0,
+    staleTime: 60_000,
+  });
+}
+
+export function useProductSuppliers(keywords: string[], enabled: boolean, limit = 10) {
+  return useQuery({
+    queryKey: ['products', 'suppliers', keywords, limit],
+    queryFn: ({ signal }) =>
+      apiGet<ProductSuppliers>('/products/suppliers', { ...productQ(keywords), limit }, { signal }),
+    enabled: enabled && keywords.length > 0,
+    staleTime: 60_000,
+  });
+}
+
+export function useProductTopContracts(
+  keywords: string[],
+  enabled: boolean,
+  page = 1,
+  pageSize = 20,
+) {
+  return useQuery({
+    queryKey: ['products', 'top-contracts', keywords, page, pageSize],
+    queryFn: ({ signal }) =>
+      apiGet<ProductTopContractsPage>(
+        '/products/top-contracts',
+        { ...productQ(keywords), page, page_size: pageSize },
+        { signal },
+      ),
+    enabled: enabled && keywords.length > 0,
+    placeholderData: keepPreviousData,
     staleTime: 60_000,
   });
 }
