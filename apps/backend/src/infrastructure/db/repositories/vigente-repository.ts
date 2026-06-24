@@ -9,6 +9,7 @@ import type {
   UpsertVigenteInput,
   VigenteFilter,
   VigentePage,
+  VigenteDetalleCache,
 } from '../../../domain/repositories/vigente-repository.js';
 
 type Db = NodePgDatabase<typeof schema>;
@@ -197,5 +198,43 @@ export class DrizzleVigenteRepository implements VigenteRepository {
       .select({ total: sql<number>`count(*)::int` })
       .from(vigenteProcedures);
     return rows[0]?.total ?? 0;
+  }
+
+  async getDetalle(numeroProcedimiento: string): Promise<VigenteDetalleCache | null> {
+    const rows = await this.db
+      .select({
+        detalleJson: vigenteProcedures.detalleJson,
+        anexosJson: vigenteProcedures.anexosJson,
+        reqeconomicosJson: vigenteProcedures.reqeconomicosJson,
+        detalleFetchedAt: vigenteProcedures.detalleFetchedAt,
+      })
+      .from(vigenteProcedures)
+      .where(eq(vigenteProcedures.numeroProcedimiento, numeroProcedimiento))
+      .limit(1);
+    const row = rows[0];
+    if (!row) return null;
+    return {
+      detalleJson: row.detalleJson,
+      anexosJson: row.anexosJson,
+      reqeconomicosJson: row.reqeconomicosJson,
+      detalleFetchedAt: row.detalleFetchedAt,
+    };
+  }
+
+  async updateDetalle(
+    numeroProcedimiento: string,
+    detalle: unknown | null,
+    anexos: unknown | null,
+    reqeconomicos: unknown | null,
+  ): Promise<void> {
+    await this.db
+      .update(vigenteProcedures)
+      .set({
+        detalleJson: detalle as never,
+        anexosJson: anexos as never,
+        reqeconomicosJson: reqeconomicos as never,
+        detalleFetchedAt: new Date(),
+      })
+      .where(eq(vigenteProcedures.numeroProcedimiento, numeroProcedimiento));
   }
 }

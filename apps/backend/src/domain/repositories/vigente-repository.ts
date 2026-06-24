@@ -69,6 +69,18 @@ export interface VigentePage {
   };
 }
 
+/**
+ * Cached on-demand detail for a vigente procedure (PR8). Each field holds the
+ * RAW JSON body intercepted from the ComprasMX detail API call (`null` when that
+ * particular call did not fire or has not been fetched yet).
+ */
+export interface VigenteDetalleCache {
+  detalleJson: unknown | null;
+  anexosJson: unknown | null;
+  reqeconomicosJson: unknown | null;
+  detalleFetchedAt: Date | null;
+}
+
 export interface VigenteRepository {
   /** Upsert a batch by numero_procedimiento; returns how many rows changed. */
   upsertMany(rows: UpsertVigenteInput[]): Promise<{ inserted: number; updated: number }>;
@@ -81,4 +93,15 @@ export interface VigenteRepository {
 
   /** Total row count (for the summary card). */
   count(): Promise<number>;
+
+  /** Read the on-demand detail cache for a procedure (PR8). Null when unknown. */
+  getDetalle(numeroProcedimiento: string): Promise<VigenteDetalleCache | null>;
+
+  /** Persist an on-demand detail fetch into the jsonb cache + set fetched_at (PR8). */
+  updateDetalle(
+    numeroProcedimiento: string,
+    detalle: unknown | null,
+    anexos: unknown | null,
+    reqeconomicos: unknown | null,
+  ): Promise<void>;
 }
