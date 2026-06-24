@@ -376,3 +376,43 @@ export interface ScrapeVigentesSummary {
   updated: number;
   message?: string;
 }
+
+// --- Vigente on-demand detail (PR8) ---
+
+/**
+ * The RAW JSON bodies intercepted from ComprasMX's 3 detail API calls. They are
+ * intentionally `unknown` here: the shapes are undocumented and live-captured
+ * (#233). Defensive accessors in the detail renderer probe likely field names
+ * rather than relying on a typed contract.
+ *
+ * Shapes (discovery #233):
+ *  - detalle:    { success, data: { registro:[{...}], anexos:[...], req_economicos:[...],
+ *                partidas:[...], idiomas:[...], grupos_req_economicos:[...], tratados:[...] } }
+ *  - anexos:     { success, data:[{ registros:[{descripcion,tipodoc_descripcion,documentos}],
+ *                paginacion:[{total_registros,...}] }] }
+ *  - reqeconomicos: { success, data:[{ registros:[{grupo,total,descripcion_gp,data_registros}] }] }
+ */
+export type VigenteDetalleJson = unknown | null;
+
+export type VigenteDetailStatus =
+  | 'cached' // served from cache, Playwright not launched
+  | 'fetched' // fresh fetch completed
+  | 'captcha_blocked' // reCAPTCHA refused (graceful, #213)
+  | 'failed' // page loaded but nothing intercepted
+  | 'timeout' // wall-clock budget elapsed
+  | 'no_anuncio_url' // procedure has no direccion_anuncio
+  | 'stale_failed'; // fetch failed but a stale cache was served
+
+/** GET /vigentes/:numero/detail — cached detail (or null fields if never fetched). */
+export interface VigenteDetalleResponse {
+  detalle: VigenteDetalleJson;
+  anexos: VigenteDetalleJson;
+  reqeconomicos: VigenteDetalleJson;
+  detalle_fetched_at: string | null;
+}
+
+/** POST /vigentes/:numero/fetch-detail — on-demand fetch result. */
+export interface FetchVigenteDetailResponse extends VigenteDetalleResponse {
+  status: VigenteDetailStatus;
+  message?: string;
+}

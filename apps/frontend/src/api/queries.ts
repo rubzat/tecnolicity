@@ -4,6 +4,7 @@ import type {
   AnalyticsSummary,
   DocumentItem,
   FetchDocumentsResponse,
+  FetchVigenteDetailResponse,
   InstitucionGroup,
   MarketBuyer,
   MarketCompetitor,
@@ -18,6 +19,7 @@ import type {
   ScrapeVigentesSummary,
   SupplierGroup,
   TipoContratacionResult,
+  VigenteDetalleResponse,
   VigenteItem,
   VigenteListPage,
 } from '../types';
@@ -275,6 +277,55 @@ export function useVigentesCount(enabled = true) {
     select: (page) => page.pagination.total,
     enabled,
     staleTime: 60_000,
+  });
+}
+
+/**
+ * Cached on-demand detail for a vigente procedure (PR8). Returns null fields
+ * when no fetch has happened yet — never launches Playwright. Used to decide
+ * whether to show the "✓ cached" hint vs "ⓘ click to load" hint on each row.
+ */
+export function useVigenteDetail(numero: string | undefined) {
+  return useQuery({
+    queryKey: ['vigente', 'detail', numero],
+    queryFn: ({ signal }) => {
+      if (!numero) throw new Error('Missing numero_procedimiento');
+      return apiGet<VigenteDetalleResponse>(
+        `/vigentes/${encodeURIComponent(numero)}/detail`,
+        undefined,
+        { signal },
+      );
+    },
+    enabled: Boolean(numero),
+    staleTime: 60_000,
+  });
+}
+
+/**
+ * On-demand Playwright fetch trigger (PR8). Loads the ComprasMX detail page and
+ * intercepts the detalle/anexos/reqeconomicos responses (~8-15s on a miss,
+ * instant on a cache hit). The response carries the fresh detail, so we write
+ * it straight into the detail cache (no extra refetch round-trip).
+ */
+export function useFetchVigenteDetail(numero: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => {
+      if (!numero) throw new Error('Missing numero_procedimiento');
+      return apiPost<FetchVigenteDetailResponse>(
+        `/vigentes/${encodeURIComponent(numero)}/fetch-detail`,
+      );
+    },
+    onSuccess: (data) => {
+      if (numero) {
+        qc.setQueryData(['vigente', 'detail', numero], {
+          detalle: data.detalle,
+          anexos: data.anexos,
+          reqeconomicos: data.reqeconomicos,
+          detalle_fetched_at: data.detalle_fetched_at,
+        });
+      }
+    },
   });
 }
 

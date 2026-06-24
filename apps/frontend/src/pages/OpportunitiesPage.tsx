@@ -13,6 +13,7 @@ import {
   Spinner,
 } from '../components/ui';
 import { Pagination } from '../components/Pagination';
+import { VigenteDetailPanel } from '../components/VigenteDetailPanel';
 
 const PAGE_SIZE = 20;
 
@@ -80,6 +81,9 @@ export function OpportunitiesPage() {
     proc: string;
     dep: string;
   }>({ q: '', tipo: '', proc: '', dep: '' });
+
+  // PR8: the currently-selected procedure whose detail drawer is open (null = closed).
+  const [selected, setSelected] = useState<VigenteItem | null>(null);
 
   const vigentes = useVigentes({
     page,
@@ -270,17 +274,27 @@ export function OpportunitiesPage() {
             }
           />
         ) : (
-          <VigentesTable rows={vigentes.data?.data ?? []} />
+          <VigentesTable rows={vigentes.data?.data ?? []} onSelect={setSelected} />
         )}
         <div className="border-t border-slate-200 px-5 py-3">
           <Pagination page={page} totalPages={totalPages} total={total} onPage={setPage} />
         </div>
       </Card>
+
+      {selected ? (
+        <VigenteDetailPanel procedure={selected} onClose={() => setSelected(null)} />
+      ) : null}
     </div>
   );
 }
 
-function VigentesTable({ rows }: { rows: VigenteItem[] }) {
+function VigentesTable({
+  rows,
+  onSelect,
+}: {
+  rows: VigenteItem[];
+  onSelect: (row: VigenteItem) => void;
+}) {
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-slate-200 text-sm">
@@ -297,21 +311,30 @@ function VigentesTable({ rows }: { rows: VigenteItem[] }) {
           {rows.map((r) => {
             const days = daysUntil(r.fecha_presentacion_apertura);
             return (
-              <tr key={r.id} className="hover:bg-slate-50">
+              <tr
+                key={r.id}
+                onClick={() => onSelect(r)}
+                className="cursor-pointer hover:bg-institucional-50/40"
+              >
                 <td className="px-5 py-3 align-top">
-                  <div className="font-medium text-slate-900">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-medium text-slate-900">
+                      {r.direcciones_anuncio ? (
+                        <span className="text-institucional hover:underline">
+                          {r.numero_procedimiento}
+                        </span>
+                      ) : (
+                        r.numero_procedimiento
+                      )}
+                    </span>
                     {r.direcciones_anuncio ? (
-                      <a
-                        href={r.direcciones_anuncio}
-                        target="_blank"
-                        rel="noreferrer noopener"
-                        className="text-institucional hover:underline"
+                      <span
+                        title="Clic para ver el detalle completo"
+                        className="text-xs text-slate-400"
                       >
-                        {r.numero_procedimiento} ↗
-                      </a>
-                    ) : (
-                      r.numero_procedimiento
-                    )}
+                        ⓘ
+                      </span>
+                    ) : null}
                   </div>
                   <div className="mt-0.5 line-clamp-2 max-w-md text-xs text-slate-500">
                     {r.nombre ?? '(sin nombre)'}
