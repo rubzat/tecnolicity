@@ -60,3 +60,19 @@ export const analyticsQuerySchema = procedureFilterSchema.extend({
 });
 
 export type AnalyticsQuery = z.infer<typeof analyticsQuerySchema>;
+
+/**
+ * Supplier Intelligence (PR9) — search query.
+ *
+ * `q` matches against supplier `nombre` (accent-insensitive substring) OR `rfc`
+ * (case-insensitive substring). Results are pre-aggregated with each supplier's
+ * total contracts + total amount so the user can gauge size before clicking.
+ * Page size is capped at 50 (a search dropdown never needs more).
+ */
+export const supplierSearchSchema = z.object({
+  q: z.string().trim().min(1).max(200),
+  page: z.coerce.number().int().min(1).default(1),
+  page_size: z.coerce.number().int().min(1).max(50).default(10),
+});
+
+export type SupplierSearchQuery = z.infer<typeof supplierSearchSchema>;
