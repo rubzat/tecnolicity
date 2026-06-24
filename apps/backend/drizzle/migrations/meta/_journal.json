@@ -29,6 +29,13 @@
       "when": 1782198122149,
       "tag": "0003_vigente_procedures",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1782199122149,
+      "tag": "0004_vigente_detalle_columns",
+      "breakpoints": true
     }
   ]
 }

@@ -65,6 +65,20 @@ export const vigenteProcedures = pgTable(
     scrapedAt: timestamp('scraped_at', { withTimezone: true }).defaultNow().notNull(),
     /** Full API registro, kept for forward compatibility / field discovery. */
     rawData: jsonb('raw_data'),
+
+    // --- On-demand detail cache (PR8) -------------------------------------
+    // The full detalleProcedimiento response, fetched on-demand via Playwright
+    // when a user opens a vigente procedure in the portal (#213/#231). Cached
+    // here so repeated views are instant; expires after a TTL (use case).
+    /** Full `detalleProcedimiento` API response body (POST expedientes/{uuid}). */
+    detalleJson: jsonb('detalle_json'),
+    /** `anexos` API response body (POST expedientes/{uuid}/anexos). */
+    anexosJson: jsonb('anexos_json'),
+    /** `reqeconomicos` API response body (POST expedientes/{uuid}/reqeconomicos). */
+    reqeconomicosJson: jsonb('reqeconomicos_json'),
+    /** When the detail cache was last populated (null = never fetched). */
+    detalleFetchedAt: timestamp('detalle_fetched_at', { withTimezone: true }),
+
     createdAt: createdAt(),
   },
   (table) => [
