@@ -31,6 +31,9 @@ data/*.xls
 # Scoped so source dirs named "storage" (domain/storage, infrastructure/storage) are tracked.
 /apps/backend/storage/
 
+# Ingestion quarantine log — runtime output only.
+quarantine.jsonl
+
 # Editor / OS
 .DS_Store
 .idea/

@@ -34,7 +34,18 @@ import type {
  * The `contracts → contract_amounts` FK is resolved by RETURNING contract ids in
  * INSERT order: we build the amount rows in the same order as their parent
  * contracts, then map each amount's `contractIx` to the returned id.
+ *
+ * CHUNKING: Drizzle's SQL builder recurses on each VALUES tuple, so a single
+ * INSERT of ~10k+ rows overflows the call stack (`mergeQueries`). Every bulk
+ * insert here is therefore split into batches of `INSERT_CHUNK_SIZE`.
  */
+const INSERT_CHUNK_SIZE = 1000;
+
+function chunks<T>(arr: readonly T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
 
 /** Drizzle client type alias (avoids importing the singleton + env side-effects). */
 export type Db = NodePgDatabase<Record<string, never>>;
@@ -45,20 +56,22 @@ export type Db = NodePgDatabase<Record<string, never>>;
 
 export async function upsertInstitutions(db: Db, rows: MappedInstitution[]): Promise<void> {
   if (rows.length === 0) return;
-  await db
-    .insert(institutions)
-    .values(rows)
-    .onConflictDoUpdate({
-      target: institutions.claveInstitucion,
-      set: {
-        nombreInstitucion: sql`excluded.nombre_institucion`,
-        siglas: sql`excluded.siglas`,
-        ordenGobierno: sql`excluded.orden_gobierno`,
-        claveRamo: sql`excluded.clave_ramo`,
-        descripcionRamo: sql`excluded.descripcion_ramo`,
-        tipoInstitucion: sql`excluded.tipo_institucion`,
-      },
-    });
+  for (const batch of chunks(rows, INSERT_CHUNK_SIZE)) {
+    await db
+      .insert(institutions)
+      .values(batch)
+      .onConflictDoUpdate({
+        target: institutions.claveInstitucion,
+        set: {
+          nombreInstitucion: sql`excluded.nombre_institucion`,
+          siglas: sql`excluded.siglas`,
+          ordenGobierno: sql`excluded.orden_gobierno`,
+          claveRamo: sql`excluded.clave_ramo`,
+          descripcionRamo: sql`excluded.descripcion_ramo`,
+          tipoInstitucion: sql`excluded.tipo_institucion`,
+        },
+      });
+  }
 }
 
 export async function upsertPurchasingUnits(
@@ -66,34 +79,38 @@ export async function upsertPurchasingUnits(
   rows: Array<Omit<MappedPurchasingUnit, 'claveInstitucion'> & { institutionId: number }>,
 ): Promise<void> {
   if (rows.length === 0) return;
-  await db
-    .insert(purchasingUnits)
-    .values(rows)
-    .onConflictDoUpdate({
-      target: purchasingUnits.claveUc,
-      set: {
-        nombreUc: sql`excluded.nombre_uc`,
-        institutionId: sql`excluded.institution_id`,
-      },
-    });
+  for (const batch of chunks(rows, INSERT_CHUNK_SIZE)) {
+    await db
+      .insert(purchasingUnits)
+      .values(batch)
+      .onConflictDoUpdate({
+        target: purchasingUnits.claveUc,
+        set: {
+          nombreUc: sql`excluded.nombre_uc`,
+          institutionId: sql`excluded.institution_id`,
+        },
+      });
+  }
 }
 
 export async function upsertSuppliers(db: Db, rows: MappedSupplier[]): Promise<void> {
   if (rows.length === 0) return;
-  await db
-    .insert(suppliers)
-    .values(rows)
-    .onConflictDoUpdate({
-      target: suppliers.rfc,
-      set: {
-        nombre: sql`excluded.nombre`,
-        folioRupc: sql`excluded.folio_rupc`,
-        pais: sql`excluded.pais`,
-        nacionalidad: sql`excluded.nacionalidad`,
-        estratificacion: sql`excluded.estratificacion`,
-        autoRegistroCompranet: sql`excluded.auto_registro_compranet`,
-      },
-    });
+  for (const batch of chunks(rows, INSERT_CHUNK_SIZE)) {
+    await db
+      .insert(suppliers)
+      .values(batch)
+      .onConflictDoUpdate({
+        target: suppliers.rfc,
+        set: {
+          nombre: sql`excluded.nombre`,
+          folioRupc: sql`excluded.folio_rupc`,
+          pais: sql`excluded.pais`,
+          nacionalidad: sql`excluded.nacionalidad`,
+          estratificacion: sql`excluded.estratificacion`,
+          autoRegistroCompranet: sql`excluded.auto_registro_compranet`,
+        },
+      });
+  }
 }
 
 export async function upsertProcedures(
@@ -101,85 +118,101 @@ export async function upsertProcedures(
   rows: Array<Omit<MappedProcedure, 'claveUc'> & { purchasingUnitId: number; ingestionBatchId: string }>,
 ): Promise<void> {
   if (rows.length === 0) return;
-  await db
-    .insert(procedures)
-    .values(rows)
-    .onConflictDoUpdate({
-      target: procedures.numeroProcedimiento,
-      set: {
-        caracter: sql`excluded.caracter`,
-        tipoContratacion: sql`excluded.tipo_contratacion`,
-        tipoProcedimiento: sql`excluded.tipo_procedimiento`,
-        ley: sql`excluded.ley`,
-        articuloExcepcion: sql`excluded.articulo_excepcion`,
-        descripcionExcepcion: sql`excluded.descripcion_excepcion`,
-        contratoMarco: sql`excluded.contrato_marco`,
-        compraConsolidada: sql`excluded.compra_consolidada`,
-        formaParticipacion: sql`excluded.forma_participacion`,
-        casoFortuito: sql`excluded.caso_fortuito`,
-        creditoExterno: sql`excluded.credito_externo`,
-        estatus: sql`excluded.estatus`,
-        fechaPublicacion: sql`excluded.fecha_publicacion`,
-        fechaApertura: sql`excluded.fecha_apertura`,
-        fechaFallo: sql`excluded.fecha_fallo`,
-        direccionAnuncio: sql`excluded.direccion_anuncio`,
-        descripcion: sql`excluded.descripcion`,
-        purchasingUnitId: sql`excluded.purchasing_unit_id`,
-        ingestionBatchId: sql`excluded.ingestion_batch_id`,
-      },
-    });
+  for (const batch of chunks(rows, INSERT_CHUNK_SIZE)) {
+    await db
+      .insert(procedures)
+      .values(batch)
+      .onConflictDoUpdate({
+        target: procedures.numeroProcedimiento,
+        set: {
+          caracter: sql`excluded.caracter`,
+          tipoContratacion: sql`excluded.tipo_contratacion`,
+          tipoProcedimiento: sql`excluded.tipo_procedimiento`,
+          ley: sql`excluded.ley`,
+          articuloExcepcion: sql`excluded.articulo_excepcion`,
+          descripcionExcepcion: sql`excluded.descripcion_excepcion`,
+          contratoMarco: sql`excluded.contrato_marco`,
+          compraConsolidada: sql`excluded.compra_consolidada`,
+          formaParticipacion: sql`excluded.forma_participacion`,
+          casoFortuito: sql`excluded.caso_fortuito`,
+          creditoExterno: sql`excluded.credito_externo`,
+          estatus: sql`excluded.estatus`,
+          fechaPublicacion: sql`excluded.fecha_publicacion`,
+          fechaApertura: sql`excluded.fecha_apertura`,
+          fechaFallo: sql`excluded.fecha_fallo`,
+          direccionAnuncio: sql`excluded.direccion_anuncio`,
+          descripcion: sql`excluded.descripcion`,
+          purchasingUnitId: sql`excluded.purchasing_unit_id`,
+          ingestionBatchId: sql`excluded.ingestion_batch_id`,
+        },
+      });
+  }
 }
 
 // ---------------------------------------------------------------------------
 // ID RESOLUTION (after parent upserts, before child inserts)
 // ---------------------------------------------------------------------------
 
+const SELECT_CHUNK = 1000;
+
 export async function fetchInstitutionIdsByClave(
   db: Db,
   claves: string[],
 ): Promise<Map<string, number>> {
-  if (claves.length === 0) return new Map();
-  const r = await db
-    .select({ id: institutions.id, clave: institutions.claveInstitucion })
-    .from(institutions)
-    .where(inArray(institutions.claveInstitucion, claves));
-  return new Map(r.map((x) => [x.clave, x.id]));
+  const out = new Map<string, number>();
+  for (const slice of chunks(claves, SELECT_CHUNK)) {
+    const r = await db
+      .select({ id: institutions.id, clave: institutions.claveInstitucion })
+      .from(institutions)
+      .where(inArray(institutions.claveInstitucion, slice));
+    for (const x of r) out.set(x.clave, x.id);
+  }
+  return out;
 }
 
 export async function fetchPurchasingUnitIdsByClave(
   db: Db,
   claves: string[],
 ): Promise<Map<string, number>> {
-  if (claves.length === 0) return new Map();
-  const r = await db
-    .select({ id: purchasingUnits.id, clave: purchasingUnits.claveUc })
-    .from(purchasingUnits)
-    .where(inArray(purchasingUnits.claveUc, claves));
-  return new Map(r.map((x) => [x.clave, x.id]));
+  const out = new Map<string, number>();
+  for (const slice of chunks(claves, SELECT_CHUNK)) {
+    const r = await db
+      .select({ id: purchasingUnits.id, clave: purchasingUnits.claveUc })
+      .from(purchasingUnits)
+      .where(inArray(purchasingUnits.claveUc, slice));
+    for (const x of r) out.set(x.clave, x.id);
+  }
+  return out;
 }
 
 export async function fetchSupplierIdsByRfc(
   db: Db,
   rfcs: string[],
 ): Promise<Map<string, number>> {
-  if (rfcs.length === 0) return new Map();
-  const r = await db
-    .select({ id: suppliers.id, rfc: suppliers.rfc })
-    .from(suppliers)
-    .where(inArray(suppliers.rfc, rfcs));
-  return new Map(r.map((x) => [x.rfc, x.id]));
+  const out = new Map<string, number>();
+  for (const slice of chunks(rfcs, SELECT_CHUNK)) {
+    const r = await db
+      .select({ id: suppliers.id, rfc: suppliers.rfc })
+      .from(suppliers)
+      .where(inArray(suppliers.rfc, slice));
+    for (const x of r) out.set(x.rfc, x.id);
+  }
+  return out;
 }
 
 export async function fetchProcedureIdsByNumero(
   db: Db,
   numeros: string[],
 ): Promise<Map<string, number>> {
-  if (numeros.length === 0) return new Map();
-  const r = await db
-    .select({ id: procedures.id, numero: procedures.numeroProcedimiento })
-    .from(procedures)
-    .where(inArray(procedures.numeroProcedimiento, numeros));
-  return new Map(r.map((x) => [x.numero, x.id]));
+  const out = new Map<string, number>();
+  for (const slice of chunks(numeros, SELECT_CHUNK)) {
+    const r = await db
+      .select({ id: procedures.id, numero: procedures.numeroProcedimiento })
+      .from(procedures)
+      .where(inArray(procedures.numeroProcedimiento, slice));
+    for (const x of r) out.set(x.numero, x.id);
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -189,16 +222,18 @@ export async function fetchProcedureIdsByNumero(
 /**
  * Delete the child rows (expedientes + contracts→amounts via cascade) for every
  * procedure in `procedureIds`, in preparation for an idempotent re-insert.
+ * Chunked to stay under Postgres' parameter cap.
  */
 export async function deleteChildrenForProcedures(
   db: Db,
   procedureIds: number[],
 ): Promise<void> {
   if (procedureIds.length === 0) return;
-  // Order matters: contracts cascade to contract_amounts (FK onDelete:cascade),
-  // but deleting expedientes first is harmless and keeps the intent explicit.
-  await db.delete(expedientes).where(inArray(expedientes.procedureId, procedureIds));
-  await db.delete(contracts).where(inArray(contracts.procedureId, procedureIds));
+  for (const slice of chunks(procedureIds, SELECT_CHUNK)) {
+    // contracts cascade to contract_amounts (FK onDelete:cascade).
+    await db.delete(expedientes).where(inArray(expedientes.procedureId, slice));
+    await db.delete(contracts).where(inArray(contracts.procedureId, slice));
+  }
 }
 
 export async function insertExpedientes(
@@ -206,22 +241,32 @@ export async function insertExpedientes(
   rows: Array<MappedExpediente & { procedureId: number }>,
 ): Promise<void> {
   if (rows.length === 0) return;
-  await db.insert(expedientes).values(rows);
+  for (const batch of chunks(rows, INSERT_CHUNK_SIZE)) {
+    await db.insert(expedientes).values(batch);
+  }
 }
 
 /**
  * Insert contracts and RETURN their ids in insertion order. PostgreSQL returns
  * multi-row INSERT...RETURNING rows in VALUES order, so callers may correlate
  * the returned ids positionally with their input rows (and thus with the amount
- * rows built in the same order).
+ * rows built in the same order). Insertion is chunked; order is preserved both
+ * within and across chunks.
  */
 export async function insertContracts(
   db: Db,
   rows: Array<Omit<MappedContract, 'rfc'> & { procedureId: number; supplierId: number | null }>,
 ): Promise<number[]> {
   if (rows.length === 0) return [];
-  const inserted = await db.insert(contracts).values(rows).returning({ id: contracts.id });
-  return inserted.map((r) => r.id);
+  const ids: number[] = [];
+  for (const batch of chunks(rows, INSERT_CHUNK_SIZE)) {
+    const inserted = await db
+      .insert(contracts)
+      .values(batch)
+      .returning({ id: contracts.id });
+    for (const r of inserted) ids.push(r.id);
+  }
+  return ids;
 }
 
 export async function insertContractAmounts(
@@ -229,5 +274,7 @@ export async function insertContractAmounts(
   rows: Array<Omit<MappedAmount, 'tipo'> & { contractId: number; tipo: 'original' | 'convenio' }>,
 ): Promise<void> {
   if (rows.length === 0) return;
-  await db.insert(contractAmounts).values(rows);
+  for (const batch of chunks(rows, INSERT_CHUNK_SIZE)) {
+    await db.insert(contractAmounts).values(batch);
+  }
 }
