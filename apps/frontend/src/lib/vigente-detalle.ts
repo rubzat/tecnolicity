@@ -47,6 +47,23 @@ function probeString(rec: Record<string, unknown>, keys: readonly string[]): str
   return null;
 }
 
+/** Read a numeric field by probing a list of likely key names (case-insensitive). */
+function probeNumber(rec: Record<string, unknown>, keys: readonly string[]): number | null {
+  for (const target of keys) {
+    for (const key of Object.keys(rec)) {
+      if (key.toLowerCase() === target) {
+        const v = rec[key];
+        if (typeof v === 'number' && Number.isFinite(v)) return v;
+        if (typeof v === 'string' && v.trim().length > 0) {
+          const n = Number(v);
+          if (Number.isFinite(n)) return n;
+        }
+      }
+    }
+  }
+  return null;
+}
+
 /** A named key-value pair extracted from the detalle registro (for the info grid). */
 export interface DetalleField {
   label: string;
@@ -165,12 +182,32 @@ function extractFromSeparateAnexos(anexos: unknown): { documentos: DetalleAnexo[
   return { documentos: docs, total };
 }
 
+/** One line item (partida) within an economic-requirements group. */
+export interface DetalleReqEconomicoItem {
+  claveCucop: string | null;
+  descripcion: string | null;
+  unidadMedida: string | null;
+  montoMinimo: number | null;
+  montoMaximo: number | null;
+}
+
 /** One economic-requirements group from reqeconomicos (or nested detalle). */
 export interface DetalleReqEconomico {
   grupo: string | null;
   total: string | null;
   descripcion: string | null;
-  items: number;
+  items: DetalleReqEconomicoItem[];
+}
+
+/** Extract one line item from a data_registros (or flat req_economicos) entry. */
+function extractReqItem(r: Record<string, unknown>): DetalleReqEconomicoItem {
+  return {
+    claveCucop: probeString(r, ['clave_cucop']),
+    descripcion: probeString(r, ['descripcion_detallada', 'descripcion_cucop']),
+    unidadMedida: probeString(r, ['unidad_medida']),
+    montoMinimo: probeNumber(r, ['monto_minimo']),
+    montoMaximo: probeNumber(r, ['monto_maximo']),
+  };
 }
 
 /** Extract economic requirements, preferring the separate endpoint, else detalle. */
@@ -187,16 +224,16 @@ export function extractReqEconomicos(
     if (isRecord(data)) {
       const list = asArray(data['req_economicos']);
       if (list.length > 0) {
-        const items = list
+        const groups = list
           .filter(isRecord)
           .map((r) => ({
             grupo: probeString(r, ['grupo', 'descripcion_grupo']),
             total: probeString(r, ['monto_maximo', 'monto_minimo']),
             descripcion: probeString(r, ['descripcion_cucop', 'descripcion_detallada']),
-            items: 1,
+            items: [extractReqItem(r)],
           }))
           .filter((x) => x.grupo || x.descripcion);
-        if (items.length > 0) return items;
+        if (groups.length > 0) return groups;
       }
     }
   }
@@ -215,6 +252,6 @@ function extractFromSeparateReq(reqeconomicos: unknown): DetalleReqEconomico[] {
       grupo: probeString(r, ['grupo', 'descripcion_gp']),
       total: probeString(r, ['total']),
       descripcion: probeString(r, ['descripcion_gp']),
-      items: asArray(r['data_registros']).length,
+      items: asArray(r['data_registros']).filter(isRecord).map(extractReqItem),
     }));
 }

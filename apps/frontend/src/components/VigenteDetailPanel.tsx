@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { isValid, parseISO } from 'date-fns';
+import { formatCurrency } from '../utils/format';
 import {
   useVigenteDetail,
   useFetchVigenteDetail,
@@ -257,8 +258,32 @@ export function VigenteDetailPanel({
                         {r.descripcion && r.descripcion !== r.grupo ? (
                           <p className="mt-0.5 text-xs text-slate-500">{r.descripcion}</p>
                         ) : null}
-                        {r.items > 0 ? (
-                          <p className="mt-0.5 text-xs text-slate-400">{r.items} partida(s)</p>
+                        {r.items.length > 0 ? (
+                          <ul className="mt-2 space-y-1 border-t border-slate-100 pt-2">
+                            {r.items.map((it, j) => (
+                              <li
+                                key={`${it.claveCucop ?? j}-${j}`}
+                                className="flex items-start justify-between gap-2 text-xs"
+                              >
+                                <span className="text-slate-600">
+                                  {it.claveCucop ? (
+                                    <span className="mr-1 font-mono text-slate-400">
+                                      {it.claveCucop}
+                                    </span>
+                                  ) : null}
+                                  {it.descripcion ?? '(sin descripción)'}
+                                  {it.unidadMedida ? (
+                                    <span className="text-slate-400"> · {it.unidadMedida}</span>
+                                  ) : null}
+                                </span>
+                                {it.montoMinimo !== null || it.montoMaximo !== null ? (
+                                  <span className="shrink-0 whitespace-nowrap text-slate-500">
+                                    {formatCurrency(it.montoMinimo)} – {formatCurrency(it.montoMaximo)}
+                                  </span>
+                                ) : null}
+                              </li>
+                            ))}
+                          </ul>
                         ) : null}
                       </li>
                     ))}
