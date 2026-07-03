@@ -1,0 +1,83 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: tecnolicity-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tecnolicity}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tecnolicity}
+      POSTGRES_DB: ${POSTGRES_DB:-tecnolicity}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-tecnolicity} -d ${POSTGRES_DB:-tecnolicity}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    # Not published to the host on purpose — only `backend` needs to reach it,
+    # over the compose network. Uncomment to inspect the DB from the host.
+    # ports:
+    #   - '5432:5432'
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: tecnolicity-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-tecnolicity}:${POSTGRES_PASSWORD:-tecnolicity}@postgres:5432/${POSTGRES_DB:-tecnolicity}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
+      EMBEDDING_DIM: ${EMBEDDING_DIM:-1536}
+      STORAGE_PATH: ./storage
+      DOCS_FETCH_ENABLED: ${DOCS_FETCH_ENABLED:-true}
+      DOCS_FETCH_CONCURRENCY: ${DOCS_FETCH_CONCURRENCY:-1}
+      DOCS_FETCH_DELAY_MS: ${DOCS_FETCH_DELAY_MS:-2000}
+      DOCS_FETCH_TIMEOUT_MS: ${DOCS_FETCH_TIMEOUT_MS:-30000}
+      DOCS_FETCH_HEADLESS_FALLBACK: ${DOCS_FETCH_HEADLESS_FALLBACK:-true}
+      SCRAPER_MAX_PAGES: ${SCRAPER_MAX_PAGES:-50}
+      SCRAPER_DELAY_MS: ${SCRAPER_DELAY_MS:-2000}
+      SCRAPER_TIMEOUT_MS: ${SCRAPER_TIMEOUT_MS:-45000}
+      SCRAPER_PAGE_SIZE: ${SCRAPER_PAGE_SIZE:-100}
+      SCRAPE_CRON_ENABLED: ${SCRAPE_CRON_ENABLED:-true}
+      SCRAPE_CRON_SCHEDULE: ${SCRAPE_CRON_SCHEDULE:-0 6 * * *}
+      VIGENTE_DETAIL_CACHE_TTL_MS: ${VIGENTE_DETAIL_CACHE_TTL_MS:-86400000}
+    volumes:
+      - backend_storage:/app/apps/backend/storage
+      # Mount source data on the host to run `pnpm ingest` inside the
+      # container (see README) — not copied into the image (too large,
+      # gitignored).
+      - ./data:/app/data:ro
+    # Not published to the host on purpose — the frontend's nginx proxies
+    # /api to this service over the compose network. Uncomment to call the
+    # API directly (debugging, or if the frontend is deployed elsewhere).
+    # ports:
+    #   - '3000:3000'
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+    container_name: tecnolicity-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - '${HTTP_PORT:-80}:80'
+
+volumes:
+  # Named explicitly (and distinctly from docker-compose.yml's dev volumes)
+  # so running dev and prod stacks from the same clone never share a
+  # Postgres data dir under the hood.
+  postgres_data:
+    name: tecnolicity_prod_postgres_data
+    driver: local
+  backend_storage:
+    name: tecnolicity_prod_backend_storage
+    driver: local

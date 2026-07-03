@@ -1,0 +1,36 @@
+node_modules
+**/node_modules
+.pnpm-store
+
+dist
+build
+**/dist
+**/build
+
+.git
+.gitignore
+
+# Large source data — not baked into images; mount at runtime if the ingest
+# CLI needs to run inside the container.
+data/*.csv
+data/*.xlsx
+data/*.xls
+
+apps/backend/storage
+apps/backend/quarantine.jsonl
+apps/backend/comprasmx.db
+
+.env
+.env.local
+.env.*.local
+.env.production
+
+*.log
+coverage
+playwright-report
+test-results
+
+.DS_Store
+.idea
+.vscode
+*.swp
