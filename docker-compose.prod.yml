@@ -68,8 +68,18 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
-    ports:
-      - '${HTTP_PORT:-80}:80'
+    # No host port binding: behind a platform-managed reverse proxy
+    # (Dokploy/Coolify/Traefik) the proxy already owns 80/443 on the host —
+    # binding here fails with "port is already allocated". The proxy routes
+    # to this container over the Docker network using the port it exposes
+    # (80, see apps/frontend/Dockerfile). Configure the domain → this
+    # service → port 80 in the platform's UI instead.
+    #
+    # Deploying on a bare VPS with no platform proxy in front? Uncomment:
+    # ports:
+    #   - '${HTTP_PORT:-80}:80'
+    expose:
+      - '80'
 
 volumes:
   # Named explicitly (and distinctly from docker-compose.yml's dev volumes)
