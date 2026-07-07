@@ -1,3 +1,13 @@
+/* Self-hosted (not CDN) so the portal never depends on an external font host
+   — matters for a Docker deploy that may sit behind a restricted network. */
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+@import '@fontsource-variable/fraunces/wght.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,4 +20,23 @@ body,
 
 body {
   @apply bg-slate-50 text-slate-900 antialiased;
+}
+
+/* A crisper, more institutional focus ring than the browser default —
+   still fully visible for keyboard navigation. */
+:focus-visible {
+  outline-offset: 2px;
+}
+
+/* Respect prefers-reduced-motion at the CSS level too, as a floor beneath
+   the JS-level motion.reducedMotion config in main.tsx. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

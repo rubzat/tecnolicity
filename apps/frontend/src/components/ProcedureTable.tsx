@@ -1,8 +1,10 @@
 import clsx from 'clsx';
 import { Link } from 'react-router-dom';
+import { motion } from 'motion/react';
 import type { ProcedureListItem, SortField, SortOrder } from '../types';
 import { formatCurrencyCompact, formatDate } from '../utils/format';
 import { Badge, estatusTone, Skeleton, EmptyState } from './ui';
+import { staggerContainer, staggerItem } from '../lib/motion';
 
 interface ProcedureTableProps {
   items: ProcedureListItem[];
@@ -60,7 +62,13 @@ export function ProcedureTable({ items, loading, sort, order, onSort }: Procedur
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <motion.tbody
+            key={items[0]?.id ?? 'empty'}
+            className="divide-y divide-slate-100"
+            initial="hidden"
+            animate="visible"
+            variants={staggerContainer}
+          >
             {loading ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <tr key={i}>
@@ -85,14 +93,15 @@ export function ProcedureTable({ items, loading, sort, order, onSort }: Procedur
               </tr>
             ) : (
               items.map((p) => (
-                <tr
+                <motion.tr
                   key={p.id}
+                  variants={staggerItem}
                   className="cursor-pointer hover:bg-institucional-50/40"
                 >
                   <td className="px-4 py-3 align-top">
                     <Link
                       to={`/procedimientos/${encodeURIComponent(p.numero_procedimiento)}`}
-                      className="font-medium text-institucional hover:underline"
+                      className="font-mono font-medium text-institucional hover:underline"
                     >
                       {p.numero_procedimiento}
                     </Link>
@@ -108,17 +117,19 @@ export function ProcedureTable({ items, loading, sort, order, onSort }: Procedur
                   <td className="px-4 py-3 align-top text-right font-mono text-xs text-slate-900">
                     {formatCurrencyCompact(p.importe_total)}
                   </td>
-                  <td className="px-4 py-3 align-top">
-                    <div className="text-slate-900">{p.institucion.nombre}</div>
-                    <div className="text-xs text-slate-500">
+                  <td className="max-w-[220px] px-4 py-3 align-top">
+                    <div className="truncate text-slate-900" title={p.institucion.nombre}>
+                      {p.institucion.nombre}
+                    </div>
+                    <div className="truncate text-xs text-slate-500" title={p.unidad_compradora.nombre}>
                       {p.institucion.siglas ? `${p.institucion.siglas} · ` : ''}
                       {p.unidad_compradora.nombre}
                     </div>
                   </td>
-                </tr>
+                </motion.tr>
               ))
             )}
-          </tbody>
+          </motion.tbody>
         </table>
       </div>
     </div>

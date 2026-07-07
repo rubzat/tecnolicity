@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { differenceInCalendarDays, isValid, parseISO } from 'date-fns';
+import { AnimatePresence } from 'motion/react';
 import { useVigentes, useScrapeVigentes } from '../api/queries';
 import type { VigenteItem } from '../types';
 import {
@@ -125,7 +126,7 @@ export function OpportunitiesPage() {
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Oportunidades vigentes</h1>
+          <h1 className="font-display text-xl font-bold text-slate-900">Oportunidades vigentes</h1>
           <p className="text-sm text-slate-500">
             Procedimientos <strong>actualmente abiertos para licitar</strong> en ComprasMX. Datos
             actualizados bajo demanda.
@@ -281,9 +282,11 @@ export function OpportunitiesPage() {
         </div>
       </Card>
 
-      {selected ? (
-        <VigenteDetailPanel procedure={selected} onClose={() => setSelected(null)} />
-      ) : null}
+      <AnimatePresence>
+        {selected ? (
+          <VigenteDetailPanel key={selected.numero_procedimiento} procedure={selected} onClose={() => setSelected(null)} />
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

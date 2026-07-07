@@ -87,7 +87,7 @@ function DetailHeader({ procedure }: { procedure: ProcedureDetail }) {
         {procedure.contrato_marco && <Badge tone="info">Contrato marco</Badge>}
         {procedure.compra_consolidada && <Badge tone="info">Compra consolidada</Badge>}
       </div>
-      <h1 className="mt-2 text-2xl font-semibold text-slate-900">
+      <h1 className="mt-2 font-display text-2xl font-semibold text-slate-900">
         {procedure.descripcion ?? 'Procedimiento sin descripción'}
       </h1>
     </div>

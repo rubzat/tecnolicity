@@ -85,7 +85,7 @@ export function ProductsPage() {
     <div className="space-y-6">
       {/* ── Header + search ── */}
       <div>
-        <h1 className="text-xl font-semibold text-slate-900">Productos</h1>
+        <h1 className="font-display text-xl font-semibold text-slate-900">Productos</h1>
         <p className="text-sm text-slate-500">
           Analizá cuánto le cuesta un producto al gobierno: precios, evolución, distribución y proveedores.
         </p>

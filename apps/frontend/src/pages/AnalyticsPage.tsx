@@ -12,7 +12,10 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { motion } from 'motion/react';
 import { Card, CardHeader, ErrorBanner, Skeleton, Spinner } from '../components/ui';
+import { AnimatedNumber } from '../components/AnimatedNumber';
+import { staggerContainer, staggerItem } from '../lib/motion';
 import { useProcedureListFilters } from '../hooks/useProcedureListFilters';
 import {
   useAnalyticsByInstitucion,
@@ -53,7 +56,7 @@ export function AnalyticsPage() {
       />
       <div className="min-w-0 flex-1 space-y-5">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Costos y estadísticas</h1>
+          <h1 className="font-display text-xl font-semibold text-slate-900">Costos y estadísticas</h1>
           <p className="text-sm text-slate-500">
             Agregados sobre los procedimientos cargados{hasActiveFilters ? ' (con filtros aplicados)' : ''}.
           </p>
@@ -133,7 +136,12 @@ function SummaryCards({
   data: import('../types').AnalyticsSummary | undefined;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <motion.div
+      className="grid grid-cols-2 gap-3 sm:grid-cols-4"
+      initial="hidden"
+      animate="visible"
+      variants={staggerContainer}
+    >
       <SummaryCard label="Total monto" loading={loading} value={data ? formatCurrencyCompact(data.total_monto) : '—'} />
       <SummaryCard
         label="Procedimientos"
@@ -142,20 +150,24 @@ function SummaryCards({
       />
       <SummaryCard label="Contratos" loading={loading} value={data ? formatNumber(data.total_contratos) : '—'} />
       <SummaryCard label="Monto promedio" loading={loading} value={data ? formatCurrencyCompact(data.monto_promedio) : '—'} />
-    </div>
+    </motion.div>
   );
 }
 
 function SummaryCard({ label, value, loading }: { label: string; value: string; loading: boolean }) {
   return (
-    <Card className="px-4 py-3">
-      <div className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</div>
-      {loading ? (
-        <Skeleton className="mt-1.5 h-6 w-24" />
-      ) : (
-        <div className="mt-1 text-xl font-semibold text-slate-900">{value}</div>
-      )}
-    </Card>
+    <motion.div variants={staggerItem}>
+      <Card className="px-4 py-3">
+        <div className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</div>
+        {loading ? (
+          <Skeleton className="mt-1.5 h-6 w-24" />
+        ) : (
+          <div className="mt-1 font-mono text-xl font-semibold text-slate-900">
+            <AnimatedNumber value={value} />
+          </div>
+        )}
+      </Card>
+    </motion.div>
   );
 }
 

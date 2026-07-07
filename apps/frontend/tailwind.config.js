@@ -33,6 +33,12 @@ export default {
           'Arial',
           'sans-serif',
         ],
+        // Display face for page titles + the wordmark. Used sparingly —
+        // Inter carries every other surface, incl. all tabular data.
+        display: ['"Fraunces Variable"', 'ui-serif', 'Georgia', 'serif'],
+        // Procedure numbers, expediente codes, monetary figures — a fixed
+        // grid reads as "record", distinguishing data from prose at a glance.
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
     },
   },

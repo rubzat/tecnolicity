@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { isValid, parseISO } from 'date-fns';
+import { motion } from 'motion/react';
 import { formatCurrency } from '../utils/format';
 import {
   useVigenteDetail,
@@ -17,6 +18,7 @@ import {
   ErrorBanner,
   Spinner,
 } from '../components/ui';
+import { backdropVariants, drawerVariants, staggerContainer, staggerItem } from '../lib/motion';
 
 /**
  * VigenteDetailPanel (PR8) — a slide-over drawer showing the FULL detail of a
@@ -87,15 +89,25 @@ export function VigenteDetailPanel({
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
       {/* Backdrop */}
-      <button
+      <motion.button
         type="button"
         aria-label="Cerrar detalle"
         className="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px]"
         onClick={onClose}
+        initial="hidden"
+        animate="visible"
+        exit="exit"
+        variants={backdropVariants}
       />
 
       {/* Drawer */}
-      <aside className="relative flex h-full w-full max-w-2xl flex-col bg-slate-50 shadow-2xl">
+      <motion.aside
+        className="relative flex h-full w-full max-w-2xl flex-col bg-slate-50 shadow-2xl"
+        initial="hidden"
+        animate="visible"
+        exit="exit"
+        variants={drawerVariants}
+      >
         {/* Header */}
         <header className="sticky top-0 z-10 border-b border-slate-200 bg-white px-6 py-4">
           <div className="flex items-start justify-between gap-3">
@@ -163,7 +175,7 @@ export function VigenteDetailPanel({
               onRetry={() => fetchDetail.mutate()}
             />
           ) : detalle ? (
-            <>
+            <motion.div initial="hidden" animate="visible" variants={staggerContainer} className="space-y-5">
               {isStaleOrFailed ? (
                 <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800">
                   {fetchDetail.data?.message ??
@@ -300,7 +312,7 @@ export function VigenteDetailPanel({
                   {JSON.stringify(detalle, null, 2)}
                 </pre>
               </details>
-            </>
+            </motion.div>
           ) : (
             <div className="py-10 text-center">
               <p className="text-sm text-slate-500">
@@ -334,7 +346,7 @@ export function VigenteDetailPanel({
             </Button>
           </footer>
         ) : null}
-      </aside>
+      </motion.aside>
     </div>
   );
 }
@@ -349,13 +361,13 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section>
+    <motion.section variants={staggerItem}>
       <div className="mb-2 flex items-baseline justify-between gap-2">
         <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
         {subtitle ? <span className="text-xs text-slate-400">{subtitle}</span> : null}
       </div>
       {children}
-    </section>
+    </motion.section>
   );
 }
 

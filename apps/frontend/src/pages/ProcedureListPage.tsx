@@ -33,7 +33,7 @@ export function ProcedureListPage() {
       <div className="min-w-0 flex-1 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h1 className="text-xl font-semibold text-slate-900">Procedimientos de contratación</h1>
+            <h1 className="font-display text-xl font-semibold text-slate-900">Procedimientos de contratación</h1>
             <p className="text-sm text-slate-500">
               {hasActiveFilters ? 'Resultados filtrados' : 'Explora licitaciones públicas de Compras MX'}
             </p>
