@@ -1,9 +1,10 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
 import type { ApiKeyRepository, ApiKeyRecord } from '../../domain/repositories/api-key-repository.js';
+import type { UserRepository } from '../../domain/repositories/user-repository.js';
 import { generateApiKey, hashApiKey, keyPrefixFor } from '../../infrastructure/auth/api-key-crypto.js';
 import { env } from '../../config/env.js';
-import { requireAdmin } from '../middleware/require-admin.js';
+import { createRequireAdmin } from '../middleware/require-admin.js';
 
 const createBody = z.object({
   name: z.string().trim().min(1, 'name is required'),
@@ -33,9 +34,9 @@ function serialize(k: ApiKeyRecord) {
 }
 
 /** All routes require an admin session — mounted at /api/admin/api-keys. */
-export function createAdminApiKeysRouter(deps: { repository: ApiKeyRepository }): Router {
+export function createAdminApiKeysRouter(deps: { repository: ApiKeyRepository; users: UserRepository }): Router {
   const router = Router();
-  router.use(requireAdmin);
+  router.use(createRequireAdmin(deps.users));
 
   router.get('/', async (_req: Request, res: Response, next: NextFunction) => {
     try {

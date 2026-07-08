@@ -5,7 +5,10 @@ import { startServer } from './presentation/server.js';
 const isMain = import.meta.url === pathToFileURL(process.argv[1] ?? '').href;
 
 if (isMain) {
-  startServer();
+  startServer().catch((err: unknown) => {
+    console.error('[server] failed to start:', err);
+    process.exit(1);
+  });
 }
 
 export { createApp } from './presentation/server.js';

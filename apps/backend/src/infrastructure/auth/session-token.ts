@@ -7,6 +7,9 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
  * a JWT library just to keep one admin logged in.
  */
 export interface SessionPayload {
+  /** User id (users.id) — the actual identity check. */
+  uid: number;
+  /** Username, carried along so /admin/me can display it without a DB hit. */
   sub: string;
   exp: number;
 }
@@ -23,8 +26,8 @@ function sign(payloadB64: string, secret: string): string {
   return createHmac('sha256', secret).update(payloadB64).digest('base64url');
 }
 
-export function createSessionToken(sub: string, ttlMs: number, secret: string): string {
-  const payload: SessionPayload = { sub, exp: Date.now() + ttlMs };
+export function createSessionToken(uid: number, sub: string, ttlMs: number, secret: string): string {
+  const payload: SessionPayload = { uid, sub, exp: Date.now() + ttlMs };
   const payloadB64 = b64urlEncode(JSON.stringify(payload));
   return `${payloadB64}.${sign(payloadB64, secret)}`;
 }

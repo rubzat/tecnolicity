@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiGet, apiPost, apiPatch, apiDelete } from './client';
-import type { AdminSession, ApiKeySummary, ApiKeyCreated } from '../types';
+import type { AdminSession, ApiKeySummary, ApiKeyCreated, UserSummary } from '../types';
 
 /** Session probe — powers the /admin route guard. Never throws on 401/etc:
  * the backend always answers 200 with `authenticated: false/true`. */
@@ -69,6 +69,45 @@ export function useDeleteApiKey() {
     mutationFn: (id: number) => apiDelete<void>(`/admin/api-keys/${id}`),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['admin', 'api-keys'] });
+    },
+  });
+}
+
+export function useUsers() {
+  return useQuery({
+    queryKey: ['admin', 'users'],
+    queryFn: ({ signal }) => apiGet<{ data: UserSummary[] }>('/admin/users', undefined, { signal }),
+  });
+}
+
+export function useCreateUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { username: string; password: string }) =>
+      apiPost<UserSummary>('/admin/users', input),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['admin', 'users'] });
+    },
+  });
+}
+
+export function useUpdateUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...patch }: { id: number; active?: boolean; password?: string }) =>
+      apiPatch<UserSummary>(`/admin/users/${id}`, patch),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['admin', 'users'] });
+    },
+  });
+}
+
+export function useDeleteUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => apiDelete<void>(`/admin/users/${id}`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['admin', 'users'] });
     },
   });
 }

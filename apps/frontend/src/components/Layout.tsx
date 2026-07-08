@@ -19,6 +19,7 @@ const navItems = [
   { to: '/analytics', label: 'Analytics', end: false },
   { to: '/docs', label: 'API', end: false },
   { to: '/admin/api-keys', label: 'API keys', end: false },
+  { to: '/admin/users', label: 'Usuarios', end: false },
 ];
 
 /**

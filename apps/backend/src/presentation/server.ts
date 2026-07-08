@@ -33,8 +33,10 @@ import { DrizzleSupplierRepository } from '../infrastructure/db/repositories/sup
 import { DrizzleProductRepository } from '../infrastructure/db/repositories/product-repository.js';
 import { DrizzleVigenteRepository } from '../infrastructure/db/repositories/vigente-repository.js';
 import { DrizzleApiKeyRepository } from '../infrastructure/db/repositories/api-key-repository.js';
+import { DrizzleUserRepository } from '../infrastructure/db/repositories/user-repository.js';
 import { VigenteScraper } from '../infrastructure/scraping/vigente-scraper.js';
 import { VigenteDetailFetcher } from '../infrastructure/scraping/vigente-detail-fetcher.js';
+import { bootstrapAdminUser } from '../infrastructure/auth/bootstrap-admin.js';
 import { createProceduresRouter } from './routes/procedures.js';
 import { createAnalyticsRouter } from './routes/analytics.js';
 import { createMarketRouter } from './routes/market.js';
@@ -44,6 +46,7 @@ import { createDocumentsRouter } from './routes/documents.js';
 import { createVigentesRouter } from './routes/vigentes.js';
 import { createAdminAuthRouter } from './routes/admin-auth.js';
 import { createAdminApiKeysRouter } from './routes/admin-api-keys.js';
+import { createAdminUsersRouter } from './routes/admin-users.js';
 import { apiKeyLookup, publicRateLimiter } from './middleware/rate-limit.js';
 import { startVigenteCron, stopVigenteCron } from '../infrastructure/scheduler/vigente-cron.js';
 
@@ -137,6 +140,10 @@ export function createApp(dbClient: Db = db): Express {
   // limit on the public read API. See middleware/rate-limit.ts.
   const apiKeyRepo = new DrizzleApiKeyRepository(dbClient);
 
+  // Login accounts (PR12) — every route under /api/admin/* needs this to
+  // check sessions, so it's built once here and threaded through.
+  const userRepo = new DrizzleUserRepository(dbClient);
+
   // Health check (also serves as the DB liveness probe).
   app.get('/api/health', (_req: Request, res: Response) => {
     res.json({ status: 'ok', uptime: process.uptime() });
@@ -153,8 +160,9 @@ export function createApp(dbClient: Db = db): Express {
     message: { error: 'rate_limited', message: 'Demasiados intentos. Intenta de nuevo en un minuto.' },
   });
   app.use('/api/admin/login', loginRateLimiter);
-  app.use('/api/admin', createAdminAuthRouter());
-  app.use('/api/admin/api-keys', createAdminApiKeysRouter({ repository: apiKeyRepo }));
+  app.use('/api/admin', createAdminAuthRouter({ users: userRepo }));
+  app.use('/api/admin/api-keys', createAdminApiKeysRouter({ repository: apiKeyRepo, users: userRepo }));
+  app.use('/api/admin/users', createAdminUsersRouter({ users: userRepo }));
 
   // Public read API — baseline rate limit per IP, raised per-key when a
   // valid X-API-Key header resolves to an active admin-issued key (PR11).
@@ -184,7 +192,11 @@ export function createApp(dbClient: Db = db): Express {
 }
 
 /** Start listening. Call once from the process entry point. */
-export function startServer(): { app: Express; close: () => Promise<void> } {
+export async function startServer(): Promise<{ app: Express; close: () => Promise<void> }> {
+  // Seed the first login account before accepting any requests — a no-op
+  // once at least one user exists (see bootstrap-admin.ts).
+  await bootstrapAdminUser(new DrizzleUserRepository(db), env.ADMIN_USERNAME, env.ADMIN_PASSWORD);
+
   const app = createApp();
   const server = app.listen(env.PORT, () => {
     console.log(`[backend] listening on :${env.PORT} (${env.NODE_ENV})`);

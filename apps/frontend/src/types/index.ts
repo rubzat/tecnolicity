@@ -575,6 +575,7 @@ export interface ProductTopContractsPage {
 export interface AdminSession {
   authenticated: boolean;
   username: string | null;
+  user_id: number | null;
 }
 
 export interface ApiKeySummary {
@@ -591,4 +592,14 @@ export interface ApiKeySummary {
 /** Only the create response ever carries the raw `key` — shown once. */
 export interface ApiKeyCreated extends ApiKeySummary {
   key: string;
+}
+
+// --- Admin: users (PR12) ---
+
+export interface UserSummary {
+  id: number;
+  username: string;
+  active: boolean;
+  last_login_at: string | null;
+  created_at: string;
 }
