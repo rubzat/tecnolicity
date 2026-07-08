@@ -3,6 +3,7 @@ import { useProcedureDetail } from '../api/queries';
 import { ApiRequestError } from '../api/client';
 import { Badge, Card, CardHeader, EmptyState, ErrorBanner, Spinner, estatusTone } from '../components/ui';
 import { DocumentsSection } from '../components/DocumentsSection';
+import { ScrollShadowX } from '../components/ScrollShadowX';
 import { formatCurrency, formatDate, formatDateTime } from '../utils/format';
 import type { AmountView, ContractView, ProcedureDetail } from '../types';
 
@@ -265,7 +266,7 @@ function AmountsTable({ amounts }: { amounts: AmountView[] }) {
       <summary className="cursor-pointer list-none text-xs font-medium text-institucional hover:underline">
         Montos detallados ({amounts.length})
       </summary>
-      <div className="mt-2 overflow-x-auto">
+      <ScrollShadowX className="mt-2">
         <table className="w-full border-separate border-spacing-0 text-xs">
           <thead>
             <tr className="text-left text-slate-500">
@@ -292,7 +293,7 @@ function AmountsTable({ amounts }: { amounts: AmountView[] }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollShadowX>
     </details>
   );
 }

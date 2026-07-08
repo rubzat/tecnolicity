@@ -42,7 +42,10 @@ export function Layout({ children }: LayoutProps) {
           }}
         />
         <div className="relative mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-3 sm:px-6">
-          <Link to="/" className="flex items-center gap-3 hover:opacity-90">
+          <Link
+            to="/"
+            className="flex items-center gap-3 rounded-md hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          >
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded bg-white/15 font-display text-lg font-semibold">
               TL
             </span>
@@ -65,7 +68,7 @@ export function Layout({ children }: LayoutProps) {
                   to={item.to}
                   end={item.end}
                   className={clsx(
-                    'relative rounded-md px-3 py-1.5 text-sm font-medium transition',
+                    'relative rounded-md px-3 py-1.5 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white',
                     isActive ? 'text-institucional' : 'text-white/85 hover:bg-white/10 hover:text-white',
                   )}
                 >
@@ -86,7 +89,7 @@ export function Layout({ children }: LayoutProps) {
           <button
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
-            className="rounded-md p-2 text-white/90 hover:bg-white/10 lg:hidden"
+            className="rounded-md p-2 text-white/90 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white lg:hidden"
             aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
             aria-expanded={menuOpen}
           >
@@ -120,7 +123,7 @@ export function Layout({ children }: LayoutProps) {
                       to={item.to}
                       end={item.end}
                       className={clsx(
-                        'rounded-md px-3 py-2 text-sm font-medium transition',
+                        'rounded-md px-3 py-2 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white',
                         isActive ? 'bg-white text-institucional' : 'text-white/85 hover:bg-white/10 hover:text-white',
                       )}
                     >

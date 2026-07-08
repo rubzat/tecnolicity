@@ -14,6 +14,7 @@ import {
   YAxis,
 } from 'recharts';
 import { Card, CardHeader, Button, ErrorBanner, Skeleton, Spinner, EmptyState } from '../components/ui';
+import { ScrollShadowX } from '../components/ScrollShadowX';
 import {
   useProductPriceHistory,
   useProductDistribution,
@@ -508,7 +509,7 @@ function SuppliersTable({ loading, rows }: { loading: boolean; rows: ProductSupp
       </thead>
       <tbody className="divide-y divide-slate-100">
         {rows.map((r) => (
-          <tr key={r.rfc} className="hover:bg-slate-50">
+          <tr key={r.rfc} className="hover:bg-institucional-50/40">
             <Td>
               <span className="font-medium text-slate-900">{truncate(r.nombre, 44)}</span>
               <span className="block text-xs text-slate-400">{r.rfc}</span>
@@ -545,7 +546,7 @@ function TopContractsTable({ loading, rows }: { loading: boolean; rows: ProductT
       </thead>
       <tbody className="divide-y divide-slate-100">
         {rows.map((r) => (
-          <tr key={r.numero_procedimiento} className="hover:bg-slate-50">
+          <tr key={r.numero_procedimiento} className="hover:bg-institucional-50/40">
             <Td>
               <Link
                 to={`/procedimientos/${encodeURIComponent(r.numero_procedimiento)}`}
@@ -589,9 +590,9 @@ function TopContractsTable({ loading, rows }: { loading: boolean; rows: ProductT
 
 function TableWrap({ children }: { children: React.ReactNode }) {
   return (
-    <div className="overflow-x-auto">
+    <ScrollShadowX>
       <table className="min-w-full divide-y divide-slate-200">{children}</table>
-    </div>
+    </ScrollShadowX>
   );
 }
 

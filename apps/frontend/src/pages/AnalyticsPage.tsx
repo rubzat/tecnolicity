@@ -17,6 +17,7 @@ import { Card, CardHeader, ErrorBanner, Skeleton, Spinner } from '../components/
 import { AnimatedNumber } from '../components/AnimatedNumber';
 import { staggerContainer, staggerItem } from '../lib/motion';
 import { useProcedureListFilters } from '../hooks/useProcedureListFilters';
+import { useIsMobile } from '../hooks/useIsMobile';
 import {
   useAnalyticsByInstitucion,
   useAnalyticsByTipoContratacion,
@@ -202,6 +203,7 @@ function BarChartAsync<T>({
   nameKey: keyof T & string;
   horizontal?: boolean;
 }) {
+  const isMobile = useIsMobile();
   if (query.isLoading) {
     return <ChartLoading />;
   }
@@ -223,7 +225,7 @@ function BarChartAsync<T>({
   const data = rows.map((r) => {
     const row = r as Record<string, unknown>;
     return {
-      name: truncate(String(row[nameKey] ?? '—'), 40),
+      name: truncate(String(row[nameKey] ?? '—'), isMobile ? 18 : 40),
       value: Number(row[dataKey] ?? 0),
     };
   });
@@ -237,7 +239,13 @@ function BarChartAsync<T>({
           {horizontal ? (
             <>
               <XAxis type="number" tickFormatter={(v: number) => formatCurrencyCompact(v)} tick={{ fontSize: 11 }} stroke="#94a3b8" />
-              <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 11 }} stroke="#94a3b8" />
+              <YAxis
+                type="category"
+                dataKey="name"
+                width={isMobile ? 88 : 140}
+                tick={{ fontSize: isMobile ? 9 : 11 }}
+                stroke="#94a3b8"
+              />
             </>
           ) : (
             <>

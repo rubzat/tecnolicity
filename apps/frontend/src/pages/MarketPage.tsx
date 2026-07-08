@@ -12,6 +12,8 @@ import {
 } from 'recharts';
 import { Card, CardHeader, Badge, Button, ErrorBanner, Skeleton, Spinner, EmptyState } from '../components/ui';
 import { useMarketKeywords } from '../hooks/useMarketKeywords';
+import { useIsMobile } from '../hooks/useIsMobile';
+import { ScrollShadowX } from '../components/ScrollShadowX';
 import {
   useMarketOverview,
   useMarketCompetitors,
@@ -72,6 +74,13 @@ export function MarketPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="font-display text-xl font-semibold text-slate-900">Mercado</h1>
+        <p className="text-sm text-slate-500">
+          Explorá competidores, compradores y oportunidades en tu segmento de negocio.
+        </p>
+      </div>
+
       {/* ── Segment selector ── */}
       <Card>
         <CardHeader
@@ -298,11 +307,12 @@ function RankedBarChart<T>({
   nameKey: keyof T & string;
   valueKey: keyof T & string;
 }) {
+  const isMobile = useIsMobile();
   if (loading) return <ChartLoading />;
   if (rows.length === 0) return <EmptyState title="Sin datos para este segmento" />;
   const data = rows.map((r) => {
     const row = r as Record<string, unknown>;
-    return { name: truncate(String(row[nameKey] ?? '—'), 32), value: Number(row[valueKey] ?? 0) };
+    return { name: truncate(String(row[nameKey] ?? '—'), isMobile ? 16 : 32), value: Number(row[valueKey] ?? 0) };
   });
   return (
     <div style={{ width: '100%', height: CHART_HEIGHT }}>
@@ -310,7 +320,13 @@ function RankedBarChart<T>({
         <BarChart data={data} layout="vertical" margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
           <XAxis type="number" tickFormatter={(v: number) => formatCurrencyCompact(v)} tick={{ fontSize: 11 }} stroke="#94a3b8" />
-          <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 10 }} stroke="#94a3b8" />
+          <YAxis
+            type="category"
+            dataKey="name"
+            width={isMobile ? 84 : 130}
+            tick={{ fontSize: isMobile ? 9 : 10 }}
+            stroke="#94a3b8"
+          />
           <Tooltip formatter={(v) => formatCurrency(Number(v))} contentStyle={tooltipStyle} />
           <Bar dataKey="value" name="Monto" radius={[0, 4, 4, 0]}>
             {data.map((_, i) => (
@@ -341,7 +357,7 @@ function CompetitorsTable({ loading, rows }: { loading: boolean; rows: MarketCom
       </thead>
       <tbody className="divide-y divide-slate-100">
         {rows.map((r) => (
-          <tr key={r.rfc} className="hover:bg-slate-50">
+          <tr key={r.rfc} className="hover:bg-institucional-50/40">
             <Td>
               <span className="font-medium text-slate-900">{truncate(r.nombre, 48)}</span>
               <span className="block text-xs text-slate-400">{r.rfc}</span>
@@ -379,7 +395,7 @@ function BuyersTable({ loading, rows }: { loading: boolean; rows: MarketBuyer[] 
       </thead>
       <tbody className="divide-y divide-slate-100">
         {rows.map((r) => (
-          <tr key={r.clave} className="hover:bg-slate-50">
+          <tr key={r.clave} className="hover:bg-institucional-50/40">
             <Td>
               <span className="font-medium text-slate-900">{truncate(r.nombre, 44)}</span>
             </Td>
@@ -425,7 +441,7 @@ function OpportunitiesTable({ loading, rows }: { loading: boolean; rows: MarketO
       </thead>
       <tbody className="divide-y divide-slate-100">
         {rows.map((r) => (
-          <tr key={r.numero_procedimiento} className="hover:bg-slate-50">
+          <tr key={r.numero_procedimiento} className="hover:bg-institucional-50/40">
             <Td>
               <Link
                 to={`/procedimientos/${encodeURIComponent(r.numero_procedimiento)}`}
@@ -508,7 +524,7 @@ function VigenteOpportunitiesTable({ loading, rows }: { loading: boolean; rows: 
         {rows.map((r) => {
           const days = daysUntilDeadline(r.fecha_presentacion_apertura);
           return (
-            <tr key={r.id} className="hover:bg-slate-50">
+            <tr key={r.id} className="hover:bg-institucional-50/40">
               <Td>
                 {r.direcciones_anuncio ? (
                   <a
@@ -576,7 +592,7 @@ function ExpiringTable({ loading, rows }: { loading: boolean; rows: MarketExpiri
           const daysLeft = r.fecha_fin ? Math.ceil((new Date(r.fecha_fin).getTime() - now) / 86_400_000) : null;
           const tone = daysLeft == null ? null : expiringTone(daysLeft);
           return (
-            <tr key={r.contrato_id} className="hover:bg-slate-50">
+            <tr key={r.contrato_id} className="hover:bg-institucional-50/40">
               <Td>
                 <Link
                   to={`/procedimientos/${encodeURIComponent(r.numero_procedimiento)}`}
@@ -653,7 +669,7 @@ function DominanceTable({ loading, rows }: { loading: boolean; rows: MarketDomin
         {rows.map((r) => {
           const tone = dominanceTone(r.dominant_share_pct);
           return (
-            <tr key={r.institution_clave} className="hover:bg-slate-50">
+            <tr key={r.institution_clave} className="hover:bg-institucional-50/40">
               <Td>
                 <span className="font-medium text-slate-900">{truncate(r.institution_nombre, 40)}</span>
               </Td>
@@ -695,9 +711,9 @@ function DominanceTable({ loading, rows }: { loading: boolean; rows: MarketDomin
 
 function TableWrap({ children }: { children: React.ReactNode }) {
   return (
-    <div className="overflow-x-auto">
+    <ScrollShadowX>
       <table className="min-w-full divide-y divide-slate-200">{children}</table>
-    </div>
+    </ScrollShadowX>
   );
 }
 

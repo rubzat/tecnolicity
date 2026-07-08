@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import type { ProcedureListItem, SortField, SortOrder } from '../types';
 import { formatCurrencyCompact, formatDate } from '../utils/format';
 import { Badge, estatusTone, Skeleton, EmptyState } from './ui';
+import { ScrollShadowX } from './ScrollShadowX';
 import { staggerContainer, staggerItem } from '../lib/motion';
 
 interface ProcedureTableProps {
@@ -26,7 +27,7 @@ const COLUMNS: { key: SortField; label: string; className?: string }[] = [
 export function ProcedureTable({ items, loading, sort, order, onSort }: ProcedureTableProps) {
   return (
     <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-      <div className="overflow-x-auto">
+      <ScrollShadowX>
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50">
             <tr>
@@ -131,7 +132,7 @@ export function ProcedureTable({ items, loading, sort, order, onSort }: Procedur
             )}
           </motion.tbody>
         </table>
-      </div>
+      </ScrollShadowX>
     </div>
   );
 }

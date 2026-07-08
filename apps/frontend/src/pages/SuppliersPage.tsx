@@ -14,7 +14,9 @@ import {
   YAxis,
 } from 'recharts';
 import { Card, CardHeader, Badge, ErrorBanner, Skeleton, Spinner, EmptyState } from '../components/ui';
+import { ScrollShadowX } from '../components/ScrollShadowX';
 import { useSupplierSearch, useSupplierProfile } from '../api/queries';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { formatCurrency, formatCurrencyCompact, formatNumber, formatDate } from '../utils/format';
 import type {
   SupplierProfile,
@@ -341,7 +343,8 @@ function YearChart({ rows }: { rows: { year: number; contracts: number; amount: 
 // ─── Institutions: horizontal bar + table ────────────────────────────────
 
 function InstitutionsBlock({ rows }: { rows: { nombre: string; contracts: number; amount: number; share_pct: number }[] }) {
-  const chartData = rows.map((r) => ({ name: truncate(r.nombre, 32), value: r.amount }));
+  const isMobile = useIsMobile();
+  const chartData = rows.map((r) => ({ name: truncate(r.nombre, isMobile ? 16 : 32), value: r.amount }));
   return (
     <div className="space-y-4">
       <div style={{ width: '100%', height: CHART_HEIGHT }}>
@@ -349,7 +352,13 @@ function InstitutionsBlock({ rows }: { rows: { nombre: string; contracts: number
           <BarChart data={chartData} layout="vertical" margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
             <XAxis type="number" tickFormatter={(v: number) => formatCurrencyCompact(v)} tick={{ fontSize: 11 }} stroke="#94a3b8" />
-            <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 10 }} stroke="#94a3b8" />
+            <YAxis
+              type="category"
+              dataKey="name"
+              width={isMobile ? 88 : 140}
+              tick={{ fontSize: isMobile ? 9 : 10 }}
+              stroke="#94a3b8"
+            />
             <Tooltip formatter={(v) => formatCurrency(Number(v))} contentStyle={tooltipStyle} />
             <Bar dataKey="value" name="Monto" radius={[0, 4, 4, 0]}>
               {chartData.map((_, i) => (
@@ -359,7 +368,7 @@ function InstitutionsBlock({ rows }: { rows: { nombre: string; contracts: number
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <div className="overflow-x-auto">
+      <ScrollShadowX>
         <table className="min-w-full divide-y divide-slate-200">
           <thead className="bg-slate-50">
             <tr>
@@ -371,7 +380,7 @@ function InstitutionsBlock({ rows }: { rows: { nombre: string; contracts: number
           </thead>
           <tbody className="divide-y divide-slate-100">
             {rows.map((r) => (
-              <tr key={r.nombre} className="hover:bg-slate-50">
+              <tr key={r.nombre} className="hover:bg-institucional-50/40">
                 <Td>{truncate(r.nombre, 44)}</Td>
                 <Td right>{formatNumber(r.contracts)}</Td>
                 <Td right>{formatCurrency(r.amount)}</Td>
@@ -382,7 +391,7 @@ function InstitutionsBlock({ rows }: { rows: { nombre: string; contracts: number
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollShadowX>
     </div>
   );
 }
@@ -430,7 +439,7 @@ function TopContractsTable({ rows, hasAmounts }: { rows: SupplierTopContract[]; 
     );
   }
   return (
-    <div className="overflow-x-auto">
+    <ScrollShadowX>
       <table className="min-w-full divide-y divide-slate-200">
         <thead className="bg-slate-50">
           <tr>
@@ -443,7 +452,7 @@ function TopContractsTable({ rows, hasAmounts }: { rows: SupplierTopContract[]; 
         </thead>
         <tbody className="divide-y divide-slate-100">
           {rows.map((r) => (
-            <tr key={r.numero_procedimiento} className="hover:bg-slate-50">
+            <tr key={r.numero_procedimiento} className="hover:bg-institucional-50/40">
               <Td>
                 <Link
                   to={`/procedimientos/${encodeURIComponent(r.numero_procedimiento)}`}
@@ -469,7 +478,7 @@ function TopContractsTable({ rows, hasAmounts }: { rows: SupplierTopContract[]; 
           ))}
         </tbody>
       </table>
-    </div>
+    </ScrollShadowX>
   );
 }
 

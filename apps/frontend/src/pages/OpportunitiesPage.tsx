@@ -15,6 +15,7 @@ import {
 } from '../components/ui';
 import { Pagination } from '../components/Pagination';
 import { VigenteDetailPanel } from '../components/VigenteDetailPanel';
+import { ScrollShadowX } from '../components/ScrollShadowX';
 
 const PAGE_SIZE = 20;
 
@@ -299,7 +300,7 @@ function VigentesTable({
   onSelect: (row: VigenteItem) => void;
 }) {
   return (
-    <div className="overflow-x-auto">
+    <ScrollShadowX>
       <table className="min-w-full divide-y divide-slate-200 text-sm">
         <thead className="bg-slate-50">
           <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -362,7 +363,7 @@ function VigentesTable({
           })}
         </tbody>
       </table>
-    </div>
+    </ScrollShadowX>
   );
 }
 
