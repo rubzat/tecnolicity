@@ -48,6 +48,16 @@ services:
       SCRAPE_CRON_ENABLED: ${SCRAPE_CRON_ENABLED:-true}
       SCRAPE_CRON_SCHEDULE: ${SCRAPE_CRON_SCHEDULE:-0 6 * * *}
       VIGENTE_DETAIL_CACHE_TTL_MS: ${VIGENTE_DETAIL_CACHE_TTL_MS:-86400000}
+      # Admin auth + public API rate limiting (PR11). ADMIN_PASSWORD and
+      # SESSION_SECRET have NO default on purpose — if they're unset here,
+      # the container gets an empty string and env.ts's zod validation
+      # fails loudly at startup instead of running with a weak secret.
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      SESSION_SECRET: ${SESSION_SECRET}
+      SESSION_TTL_MS: ${SESSION_TTL_MS:-604800000}
+      PUBLIC_RATE_LIMIT_PER_MINUTE: ${PUBLIC_RATE_LIMIT_PER_MINUTE:-30}
+      API_KEY_DEFAULT_RATE_LIMIT_PER_MINUTE: ${API_KEY_DEFAULT_RATE_LIMIT_PER_MINUTE:-300}
     volumes:
       - backend_storage:/app/apps/backend/storage
       # Mount source data on the host to run `pnpm ingest` inside the
