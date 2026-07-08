@@ -49,6 +49,7 @@ export async function apiGet<T>(path: string, query?: Record<string, unknown>, o
   const res = await fetch(url, {
     method: 'GET',
     headers: { Accept: 'application/json' },
+    credentials: 'include',
     signal: opts?.signal,
   });
 
@@ -61,15 +62,23 @@ export async function apiGet<T>(path: string, query?: Record<string, unknown>, o
   return body as T;
 }
 
-/**
- * POST wrapper (same error normalization as apiGet). Used by the on-demand
- * document fetch trigger.
- */
-export async function apiPost<T>(path: string, opts?: RequestOptions): Promise<T> {
+/** Shared implementation for POST/PATCH/DELETE — JSON body, cookies included
+ * (the admin session lives in an httpOnly cookie). */
+async function apiMutate<T>(
+  method: 'POST' | 'PATCH' | 'DELETE',
+  path: string,
+  jsonBody?: unknown,
+  opts?: RequestOptions,
+): Promise<T> {
   const url = new URL(`${API_BASE}${path}`, window.location.origin);
   const res = await fetch(url, {
-    method: 'POST',
-    headers: { Accept: 'application/json' },
+    method,
+    headers: {
+      Accept: 'application/json',
+      ...(jsonBody !== undefined ? { 'Content-Type': 'application/json' } : {}),
+    },
+    credentials: 'include',
+    body: jsonBody !== undefined ? JSON.stringify(jsonBody) : undefined,
     signal: opts?.signal,
   });
 
@@ -80,6 +89,19 @@ export async function apiPost<T>(path: string, opts?: RequestOptions): Promise<T
     throw new ApiRequestError(res.status, body as ApiErrorBody | undefined);
   }
   return body as T;
+}
+
+/** POST wrapper. `jsonBody` is optional (most existing callers are trigger-only). */
+export function apiPost<T>(path: string, jsonBody?: unknown, opts?: RequestOptions): Promise<T> {
+  return apiMutate<T>('POST', path, jsonBody, opts);
+}
+
+export function apiPatch<T>(path: string, jsonBody?: unknown, opts?: RequestOptions): Promise<T> {
+  return apiMutate<T>('PATCH', path, jsonBody, opts);
+}
+
+export function apiDelete<T>(path: string, opts?: RequestOptions): Promise<T> {
+  return apiMutate<T>('DELETE', path, undefined, opts);
 }
 
 function safeParse(text: string): unknown {

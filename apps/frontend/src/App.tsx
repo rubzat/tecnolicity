@@ -26,6 +26,13 @@ const ProductsPage = lazy(() =>
 const OpportunitiesPage = lazy(() =>
   import('./pages/OpportunitiesPage').then((m) => ({ default: m.OpportunitiesPage })),
 );
+const AdminLoginPage = lazy(() =>
+  import('./pages/AdminLoginPage').then((m) => ({ default: m.AdminLoginPage })),
+);
+const AdminApiKeysPage = lazy(() =>
+  import('./pages/AdminApiKeysPage').then((m) => ({ default: m.AdminApiKeysPage })),
+);
+const ApiDocsPage = lazy(() => import('./pages/ApiDocsPage').then((m) => ({ default: m.ApiDocsPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -110,6 +117,30 @@ export function App() {
               element={
                 <Suspense fallback={<RouteFallback>Cargando analíticas…</RouteFallback>}>
                   <AnalyticsPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/docs"
+              element={
+                <Suspense fallback={<RouteFallback>Cargando documentación…</RouteFallback>}>
+                  <ApiDocsPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/admin/login"
+              element={
+                <Suspense fallback={<RouteFallback>Cargando…</RouteFallback>}>
+                  <AdminLoginPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/admin/api-keys"
+              element={
+                <Suspense fallback={<RouteFallback>Cargando…</RouteFallback>}>
+                  <AdminApiKeysPage />
                 </Suspense>
               }
             />

@@ -17,11 +17,13 @@
   },
   "dependencies": {
     "@tecnolicity/shared": "workspace:*",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "csv-parse": "^5.6.0",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.38.2",
     "express": "^4.21.2",
+    "express-rate-limit": "^8.5.2",
     "helmet": "^8.0.0",
     "node-cron": "^4.5.0",
     "pg": "^8.13.1",
@@ -29,6 +31,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.0",

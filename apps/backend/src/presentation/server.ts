@@ -6,6 +6,8 @@ import express, {
 } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import rateLimit from 'express-rate-limit';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { env } from '../config/env.js';
 import { db, pool } from '../db/client.js';
@@ -30,6 +32,7 @@ import { DrizzleMarketRepository } from '../infrastructure/db/repositories/marke
 import { DrizzleSupplierRepository } from '../infrastructure/db/repositories/supplier-repository.js';
 import { DrizzleProductRepository } from '../infrastructure/db/repositories/product-repository.js';
 import { DrizzleVigenteRepository } from '../infrastructure/db/repositories/vigente-repository.js';
+import { DrizzleApiKeyRepository } from '../infrastructure/db/repositories/api-key-repository.js';
 import { VigenteScraper } from '../infrastructure/scraping/vigente-scraper.js';
 import { VigenteDetailFetcher } from '../infrastructure/scraping/vigente-detail-fetcher.js';
 import { createProceduresRouter } from './routes/procedures.js';
@@ -39,6 +42,9 @@ import { createSuppliersRouter } from './routes/suppliers.js';
 import { createProductsRouter } from './routes/products.js';
 import { createDocumentsRouter } from './routes/documents.js';
 import { createVigentesRouter } from './routes/vigentes.js';
+import { createAdminAuthRouter } from './routes/admin-auth.js';
+import { createAdminApiKeysRouter } from './routes/admin-api-keys.js';
+import { apiKeyLookup, publicRateLimiter } from './middleware/rate-limit.js';
 import { startVigenteCron, stopVigenteCron } from '../infrastructure/scheduler/vigente-cron.js';
 
 type Db = NodePgDatabase<typeof schema>;
@@ -52,8 +58,9 @@ export function createApp(dbClient: Db = db): Express {
   const app = express();
 
   app.use(helmet());
-  app.use(cors({ origin: env.CORS_ORIGIN }));
+  app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
   app.use(express.json());
+  app.use(cookieParser());
 
   // Composition root
   const repo = new DrizzleProcedureQueryRepository(dbClient);
@@ -126,10 +133,32 @@ export function createApp(dbClient: Db = db): Express {
     timeoutMs: env.SCRAPER_TIMEOUT_MS,
   });
 
+  // API key issuance (PR11) — admin-managed keys that raise a caller's rate
+  // limit on the public read API. See middleware/rate-limit.ts.
+  const apiKeyRepo = new DrizzleApiKeyRepository(dbClient);
+
   // Health check (also serves as the DB liveness probe).
   app.get('/api/health', (_req: Request, res: Response) => {
     res.json({ status: 'ok', uptime: process.uptime() });
   });
+
+  // Admin routes — mounted BEFORE the public rate limiter below so they're
+  // never subject to it (they're gated by requireAdmin instead, except
+  // /login itself, which gets its own tighter brute-force limiter here).
+  const loginRateLimiter = rateLimit({
+    windowMs: 60_000,
+    limit: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'rate_limited', message: 'Demasiados intentos. Intenta de nuevo en un minuto.' },
+  });
+  app.use('/api/admin/login', loginRateLimiter);
+  app.use('/api/admin', createAdminAuthRouter());
+  app.use('/api/admin/api-keys', createAdminApiKeysRouter({ repository: apiKeyRepo }));
+
+  // Public read API — baseline rate limit per IP, raised per-key when a
+  // valid X-API-Key header resolves to an active admin-issued key (PR11).
+  app.use('/api', apiKeyLookup(apiKeyRepo), publicRateLimiter);
 
   // Routes — all mounted under /api (design REST contract).
   app.use('/api/procedures', createProceduresRouter({ list, detail }));

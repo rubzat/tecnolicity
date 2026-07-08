@@ -569,3 +569,26 @@ export interface ProductTopContractsPage {
   data: ProductTopContract[];
   pagination: PaginationMeta;
 }
+
+// --- Admin: auth + API keys (PR11) ---
+
+export interface AdminSession {
+  authenticated: boolean;
+  username: string | null;
+}
+
+export interface ApiKeySummary {
+  id: number;
+  name: string;
+  email: string | null;
+  key_prefix: string;
+  rate_limit_per_minute: number;
+  active: boolean;
+  last_used_at: string | null;
+  created_at: string;
+}
+
+/** Only the create response ever carries the raw `key` — shown once. */
+export interface ApiKeyCreated extends ApiKeySummary {
+  key: string;
+}

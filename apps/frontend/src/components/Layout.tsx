@@ -15,6 +15,7 @@ const navItems = [
   { to: '/productos', label: 'Productos', end: false },
   { to: '/proveedores', label: 'Proveedores', end: false },
   { to: '/analytics', label: 'Analytics', end: false },
+  { to: '/docs', label: 'API', end: false },
 ];
 
 /**

@@ -47,6 +47,21 @@ const envSchema = z.object({
   // forced (vigente procedures change: deadlines move, documents are added).
   // Default: 24 hours.
   VIGENTE_DETAIL_CACHE_TTL_MS: z.coerce.number().int().min(60_000).default(86_400_000),
+
+  // --- Admin auth (single operator account) --------------------------------
+  // Gates /api/admin/* only — the public read API stays open (PR11). No
+  // defaults on the secrets: every environment must set its own.
+  ADMIN_USERNAME: z.string().min(1).default('admin'),
+  ADMIN_PASSWORD: z.string().min(8, 'ADMIN_PASSWORD must be at least 8 characters'),
+  // HMAC key for signing the admin session cookie. Any long random string.
+  SESSION_SECRET: z.string().min(16, 'SESSION_SECRET must be at least 16 characters'),
+  SESSION_TTL_MS: z.coerce.number().int().min(60_000).default(7 * 24 * 60 * 60 * 1000),
+
+  // --- Public API rate limiting (PR11) --------------------------------------
+  // Baseline for unauthenticated callers (per IP). A valid, active API key
+  // raises the caller's limit to its own configured value instead.
+  PUBLIC_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).default(30),
+  API_KEY_DEFAULT_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).default(300),
 });
 
 const parsed = envSchema.safeParse(process.env);
