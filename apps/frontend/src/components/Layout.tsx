@@ -3,6 +3,8 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import clsx from 'clsx';
 import { pageVariants } from '../lib/motion';
+import { useAdminSession, useAdminLogout } from '../api/admin-queries';
+import { Button } from './ui';
 
 interface LayoutProps {
   children: ReactNode;
@@ -16,6 +18,7 @@ const navItems = [
   { to: '/proveedores', label: 'Proveedores', end: false },
   { to: '/analytics', label: 'Analytics', end: false },
   { to: '/docs', label: 'API', end: false },
+  { to: '/admin/api-keys', label: 'API keys', end: false },
 ];
 
 /**
@@ -25,6 +28,11 @@ const navItems = [
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const session = useAdminSession();
+  const logout = useAdminLogout();
+  // Nav/logout only make sense once past the login gate — on /admin/login
+  // (or mid-redirect-to-login) show just the brand bar.
+  const showNav = location.pathname !== '/admin/login' && session.data?.authenticated === true;
 
   // Close the mobile menu on every navigation.
   useEffect(() => {
@@ -58,63 +66,10 @@ export function Layout({ children }: LayoutProps) {
             </span>
           </Link>
 
-          {/* Desktop nav */}
-          <nav className="hidden gap-1 lg:flex">
-            {navItems.map((item) => {
-              const isActive =
-                item.end ? location.pathname === item.to : location.pathname.startsWith(item.to);
-              return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.end}
-                  className={clsx(
-                    'relative rounded-md px-3 py-1.5 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white',
-                    isActive ? 'text-institucional' : 'text-white/85 hover:bg-white/10 hover:text-white',
-                  )}
-                >
-                  {isActive && (
-                    <motion.span
-                      layoutId="nav-active"
-                      className="absolute inset-0 rounded-md bg-white"
-                      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                    />
-                  )}
-                  <span className="relative">{item.label}</span>
-                </NavLink>
-              );
-            })}
-          </nav>
-
-          {/* Mobile menu toggle */}
-          <button
-            type="button"
-            onClick={() => setMenuOpen((v) => !v)}
-            className="rounded-md p-2 text-white/90 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white lg:hidden"
-            aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
-            aria-expanded={menuOpen}
-          >
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              {menuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-              )}
-            </svg>
-          </button>
-        </div>
-
-        {/* Mobile nav panel */}
-        <AnimatePresence>
-          {menuOpen && (
-            <motion.nav
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="relative overflow-hidden border-t border-white/10 lg:hidden"
-            >
-              <div className="flex flex-col gap-0.5 px-4 py-2 sm:px-6">
+          {showNav && (
+            <>
+              {/* Desktop nav */}
+              <nav aria-label="Principal" className="hidden items-center gap-0.5 lg:flex xl:gap-1">
                 {navItems.map((item) => {
                   const isActive =
                     item.end ? location.pathname === item.to : location.pathname.startsWith(item.to);
@@ -124,18 +79,96 @@ export function Layout({ children }: LayoutProps) {
                       to={item.to}
                       end={item.end}
                       className={clsx(
-                        'rounded-md px-3 py-2 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white',
-                        isActive ? 'bg-white text-institucional' : 'text-white/85 hover:bg-white/10 hover:text-white',
+                        'relative whitespace-nowrap rounded-md px-2 py-1.5 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white xl:px-3',
+                        isActive ? 'text-institucional' : 'text-white/85 hover:bg-white/10 hover:text-white',
                       )}
                     >
-                      {item.label}
+                      {isActive && (
+                        <motion.span
+                          layoutId="nav-active"
+                          className="absolute inset-0 rounded-md bg-white"
+                          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                        />
+                      )}
+                      <span className="relative">{item.label}</span>
                     </NavLink>
                   );
                 })}
-              </div>
-            </motion.nav>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  type="button"
+                  onClick={() => logout.mutate()}
+                  disabled={logout.isPending}
+                  className="ml-1 whitespace-nowrap text-white/85 hover:bg-white/10 hover:text-white"
+                >
+                  Cerrar sesión
+                </Button>
+              </nav>
+
+              {/* Mobile menu toggle */}
+              <button
+                type="button"
+                onClick={() => setMenuOpen((v) => !v)}
+                className="rounded-md p-2 text-white/90 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white lg:hidden"
+                aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
+                aria-expanded={menuOpen}
+              >
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  {menuOpen ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                  )}
+                </svg>
+              </button>
+            </>
           )}
-        </AnimatePresence>
+        </div>
+
+        {/* Mobile nav panel */}
+        {showNav && (
+          <AnimatePresence>
+            {menuOpen && (
+              <motion.nav
+                aria-label="Principal"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                className="relative overflow-hidden border-t border-white/10 lg:hidden"
+              >
+                <div className="flex flex-col gap-0.5 px-4 py-2 sm:px-6">
+                  {navItems.map((item) => {
+                    const isActive =
+                      item.end ? location.pathname === item.to : location.pathname.startsWith(item.to);
+                    return (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        end={item.end}
+                        className={clsx(
+                          'rounded-md px-3 py-2 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white',
+                          isActive ? 'bg-white text-institucional' : 'text-white/85 hover:bg-white/10 hover:text-white',
+                        )}
+                      >
+                        {item.label}
+                      </NavLink>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => logout.mutate()}
+                    disabled={logout.isPending}
+                    className="rounded-md px-3 py-2 text-left text-sm font-medium text-white/85 transition hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  >
+                    Cerrar sesión
+                  </button>
+                </div>
+              </motion.nav>
+            )}
+          </AnimatePresence>
+        )}
       </header>
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6">
         <motion.div

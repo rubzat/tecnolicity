@@ -2,6 +2,7 @@ import { lazy, Suspense, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from './components/Layout';
+import { AuthGate } from './components/AuthGate';
 import { ProcedureListPage } from './pages/ProcedureListPage';
 import { Spinner } from './components/ui';
 
@@ -70,82 +71,84 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Layout>
-          <Routes>
-            <Route path="/" element={<ProcedureListPage />} />
-            <Route
-              path="/oportunidades"
-              element={
-                <Suspense fallback={<RouteFallback>Cargando oportunidades…</RouteFallback>}>
-                  <OpportunitiesPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/mercado"
-              element={
-                <Suspense fallback={<RouteFallback>Cargando inteligencia de mercado…</RouteFallback>}>
-                  <MarketPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/proveedores"
-              element={
-                <Suspense fallback={<RouteFallback>Cargando proveedores…</RouteFallback>}>
-                  <SuppliersPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/productos"
-              element={
-                <Suspense fallback={<RouteFallback>Cargando productos…</RouteFallback>}>
-                  <ProductsPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/procedimientos/:numeroProcedimiento"
-              element={
-                <Suspense fallback={<RouteFallback>Cargando procedimiento…</RouteFallback>}>
-                  <ProcedureDetailPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/analytics"
-              element={
-                <Suspense fallback={<RouteFallback>Cargando analíticas…</RouteFallback>}>
-                  <AnalyticsPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/docs"
-              element={
-                <Suspense fallback={<RouteFallback>Cargando documentación…</RouteFallback>}>
-                  <ApiDocsPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/admin/login"
-              element={
-                <Suspense fallback={<RouteFallback>Cargando…</RouteFallback>}>
-                  <AdminLoginPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/admin/api-keys"
-              element={
-                <Suspense fallback={<RouteFallback>Cargando…</RouteFallback>}>
-                  <AdminApiKeysPage />
-                </Suspense>
-              }
-            />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <AuthGate>
+            <Routes>
+              <Route path="/" element={<ProcedureListPage />} />
+              <Route
+                path="/oportunidades"
+                element={
+                  <Suspense fallback={<RouteFallback>Cargando oportunidades…</RouteFallback>}>
+                    <OpportunitiesPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/mercado"
+                element={
+                  <Suspense fallback={<RouteFallback>Cargando inteligencia de mercado…</RouteFallback>}>
+                    <MarketPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/proveedores"
+                element={
+                  <Suspense fallback={<RouteFallback>Cargando proveedores…</RouteFallback>}>
+                    <SuppliersPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/productos"
+                element={
+                  <Suspense fallback={<RouteFallback>Cargando productos…</RouteFallback>}>
+                    <ProductsPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/procedimientos/:numeroProcedimiento"
+                element={
+                  <Suspense fallback={<RouteFallback>Cargando procedimiento…</RouteFallback>}>
+                    <ProcedureDetailPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/analytics"
+                element={
+                  <Suspense fallback={<RouteFallback>Cargando analíticas…</RouteFallback>}>
+                    <AnalyticsPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/docs"
+                element={
+                  <Suspense fallback={<RouteFallback>Cargando documentación…</RouteFallback>}>
+                    <ApiDocsPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/admin/login"
+                element={
+                  <Suspense fallback={<RouteFallback>Cargando…</RouteFallback>}>
+                    <AdminLoginPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/admin/api-keys"
+                element={
+                  <Suspense fallback={<RouteFallback>Cargando…</RouteFallback>}>
+                    <AdminApiKeysPage />
+                  </Suspense>
+                }
+              />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </AuthGate>
         </Layout>
       </BrowserRouter>
     </QueryClientProvider>

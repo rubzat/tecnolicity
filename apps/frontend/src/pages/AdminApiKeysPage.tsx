@@ -2,7 +2,6 @@ import { useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
 import {
   useAdminSession,
-  useAdminLogout,
   useApiKeys,
   useCreateApiKey,
   useUpdateApiKey,
@@ -37,22 +36,16 @@ export function AdminApiKeysPage() {
 
 function ApiKeysManager() {
   const keys = useApiKeys();
-  const logout = useAdminLogout();
   const [justCreated, setJustCreated] = useState<ApiKeyCreated | null>(null);
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="font-display text-xl font-semibold text-slate-900">API keys</h1>
-          <p className="text-sm text-slate-500">
-            Cada key eleva el límite de un consumidor de la API pública (/api/vigentes y demás) por
-            encima del límite base sin key.
-          </p>
-        </div>
-        <Button variant="secondary" size="sm" onClick={() => logout.mutate()} disabled={logout.isPending}>
-          Cerrar sesión
-        </Button>
+      <div>
+        <h1 className="font-display text-xl font-semibold text-slate-900">API keys</h1>
+        <p className="text-sm text-slate-500">
+          Cada key eleva el límite de un consumidor de la API pública (/api/vigentes y demás) por
+          encima del límite base sin key.
+        </p>
       </div>
 
       {justCreated && <NewKeyBanner apiKey={justCreated} onDismiss={() => setJustCreated(null)} />}

@@ -151,11 +151,16 @@ beforeEach(() => {
   vi.restoreAllMocks();
 });
 
+/** Every test exercises the app "already logged in" — Layout/AuthGate both
+ * check /admin/me, so it needs a default stub unless a test overrides it. */
+const AUTHENTICATED_SESSION = { authenticated: true, username: 'admin' };
+
 function mockFetch(map: Record<string, unknown>) {
+  const fullMap: Record<string, unknown> = { '/api/admin/me': AUTHENTICATED_SESSION, ...map };
   const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
     const url = typeof input === 'string' ? input : input.toString();
     const path = url.replace(/^https?:\/\/[^/]+/, '').split('?')[0] ?? '';
-    const body = map[path];
+    const body = fullMap[path];
     if (body === undefined) {
       return new Response(JSON.stringify({ error: 'not_found', message: path }), { status: 404 });
     }
@@ -322,7 +327,7 @@ describe('Layout navigation', () => {
   it('links Inicio and Analytics from the header', async () => {
     mockFetch({ '/api/procedures': sampleList });
     render(treeAt('/'));
-    const nav = screen.getByRole('navigation');
+    const nav = await screen.findByRole('navigation', { name: 'Principal' });
     expect(within(nav).getByText('Inicio')).toBeInTheDocument();
     expect(within(nav).getByText('Analytics')).toBeInTheDocument();
   });
@@ -330,7 +335,7 @@ describe('Layout navigation', () => {
   it('includes the Proveedores nav link', async () => {
     mockFetch({ '/api/procedures': sampleList });
     render(treeAt('/'));
-    const nav = screen.getByRole('navigation');
+    const nav = await screen.findByRole('navigation', { name: 'Principal' });
     expect(within(nav).getByText('Proveedores')).toBeInTheDocument();
   });
 });
