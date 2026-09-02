@@ -175,9 +175,16 @@ export class DrizzleVigenteRepository implements VigenteRepository {
 
     // Postgres pone los NULL primero en DESC por default — hay que forzarlo
     // explícito para que las vigentes sin score no salgan arriba de las que sí tienen.
+    // Ambas ramas cierran con `numero_procedimiento` (único) como desempate
+    // final: sin él, las filas empatadas en todas las llaves previas pueden
+    // reordenarse entre requests y LIMIT/OFFSET repetiría o saltaría filas.
     const orderBy =
       sort === 'score'
-        ? [sql`${opportunitySegmentStats.score} DESC NULLS LAST`, asc(vigenteProcedures.fechaPresentacionApertura)]
+        ? [
+            sql`${opportunitySegmentStats.score} DESC NULLS LAST`,
+            asc(vigenteProcedures.fechaPresentacionApertura),
+            asc(vigenteProcedures.numeroProcedimiento),
+          ]
         : [asc(vigenteProcedures.fechaPresentacionApertura), asc(vigenteProcedures.numeroProcedimiento)];
 
     const rows = await this.db
