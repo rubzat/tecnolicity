@@ -13,7 +13,8 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:verify": "tsx src/db/verify.ts",
     "ingest": "tsx src/ingestion/cli.ts",
-    "scrape-vigentes": "tsx src/scripts/scrape-vigentes.ts"
+    "scrape-vigentes": "tsx src/scripts/scrape-vigentes.ts",
+    "compute-scores": "tsx src/scripts/compute-scores.ts"
   },
   "dependencies": {
     "@tecnolicity/shared": "workspace:*",
