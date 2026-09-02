@@ -83,6 +83,7 @@ export function OpportunitiesPage() {
   const [tipoContratacion, setTipoContratacion] = useState('');
   const [tipoProcedimiento, setTipoProcedimiento] = useState('');
   const [dependencia, setDependencia] = useState('');
+  const [sortByScore, setSortByScore] = useState(false);
   const [applied, setApplied] = useState<{
     q: string;
     tipo: string;
@@ -100,6 +101,7 @@ export function OpportunitiesPage() {
     tipo_contratacion: applied.tipo || undefined,
     tipo_procedimiento: applied.proc || undefined,
     dependencia: applied.dep || undefined,
+    sort: sortByScore ? 'score' : undefined,
   });
 
   const scrape = useScrapeVigentes();
@@ -151,6 +153,16 @@ export function OpportunitiesPage() {
           ) : (
             '↻ Actualizar datos'
           )}
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => {
+            setSortByScore((v) => !v);
+            setPage(1);
+          }}
+        >
+          {sortByScore ? '✓ Ordenado por score' : 'Ordenar por score'}
         </Button>
       </div>
 
@@ -314,6 +326,7 @@ function VigentesTable({
             <th className="px-5 py-3">Dependencia</th>
             <th className="px-5 py-3">Tipo</th>
             <th className="px-5 py-3">Presentación</th>
+            <th className="px-5 py-3 text-right">Score</th>
             <th className="px-5 py-3 text-right">Días restantes</th>
           </tr>
         </thead>
@@ -360,6 +373,21 @@ function VigentesTable({
                 </td>
                 <td className="px-5 py-3 align-top text-slate-700">
                   {formatDate(r.fecha_presentacion_apertura)}
+                </td>
+                <td className="px-5 py-3 text-right align-top">
+                  {r.score == null ? (
+                    <span className="text-xs text-slate-400" title="No hay suficientes contratos históricos en este segmento para calcular un score confiable.">
+                      Sin datos
+                    </span>
+                  ) : (
+                    <span
+                      title={`Monto: ${r.score_breakdown!.amount_score} · Competencia: ${r.score_breakdown!.competition_score}${r.score_breakdown!.is_dominated ? ' · Proveedor dominante' : ''} · ${r.score_breakdown!.sample_size} contratos históricos`}
+                    >
+                      <Badge tone={r.score >= 70 ? 'success' : r.score >= 40 ? 'neutral' : 'warning'}>
+                        {r.score}
+                      </Badge>
+                    </span>
+                  )}
                 </td>
                 <td className="px-5 py-3 text-right align-top">
                   <Badge tone={urgencyTone(days)}>{deadlineLabel(days)}</Badge>

@@ -349,6 +349,13 @@ export interface VigenteItem {
   direcciones_anuncio: string | null;
   entidad_federativa: string | null;
   scraped_at: string;
+  score: number | null;
+  score_breakdown: {
+    amount_score: number;
+    competition_score: number;
+    is_dominated: boolean;
+    sample_size: number;
+  } | null;
 }
 
 export interface VigenteListPage {

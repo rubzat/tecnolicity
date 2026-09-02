@@ -53,6 +53,8 @@ import { DrizzleSavedSearchMatchRepository } from '../infrastructure/db/reposito
 import { ElasticEmailClient } from '../infrastructure/email/elastic-email-client.js';
 import { NullEmailSender } from '../infrastructure/email/null-email-sender.js';
 import { EvaluateAlerts } from '../application/alerts/evaluate-alerts.js';
+import { DrizzleOpportunityScoreRepository } from '../infrastructure/db/repositories/opportunity-score-repository.js';
+import { ComputeOpportunityScores } from '../application/opportunities/compute-opportunity-scores.js';
 import type { EmailSender } from '../domain/email/email-sender.js';
 import { apiKeyLookup, publicRateLimiter } from './middleware/rate-limit.js';
 import { startVigenteCron, stopVigenteCron } from '../infrastructure/scheduler/vigente-cron.js';
@@ -224,6 +226,11 @@ export async function startServer(): Promise<{ app: Express; close: () => Promis
     baseUrl: env.CORS_ORIGIN,
   });
 
+  // Score de oportunidad (PR14) — se recalcula tras cada scrape exitoso.
+  const computeOpportunityScores = new ComputeOpportunityScores({
+    repository: new DrizzleOpportunityScoreRepository(db),
+  });
+
   // Start the daily vigente scraper cron (configured via SCRAPE_CRON_*).
   startVigenteCron({
     // scrapeRunStartedAt no se pasa a execute(): la frescura de un match se
@@ -238,6 +245,15 @@ export async function startServer(): Promise<{ app: Express; close: () => Promis
         );
       } catch (err) {
         console.error('[alerts] falló la evaluación de alertas:', err);
+      }
+
+      try {
+        const summary = await computeOpportunityScores.execute();
+        console.log(
+          `[score] recalculó ${summary.segmentsScored} de ${summary.segmentsEvaluated} segmento(s) con datos suficientes`,
+        );
+      } catch (err) {
+        console.error('[score] falló el recálculo del score de oportunidad:', err);
       }
     },
   });

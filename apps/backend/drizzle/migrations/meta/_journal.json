@@ -57,6 +57,13 @@
       "when": 1788315720458,
       "tag": "0007_friendly_iceman",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788362606243,
+      "tag": "0008_serious_anthem",
+      "breakpoints": true
     }
   ]
 }

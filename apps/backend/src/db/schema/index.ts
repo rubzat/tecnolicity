@@ -15,3 +15,4 @@ export { apiKeys } from './api-keys';
 export { users } from './users';
 export { savedSearches } from './saved-searches';
 export { savedSearchMatches } from './saved-search-matches';
+export { opportunitySegmentStats } from './opportunity-segment-stats';

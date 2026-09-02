@@ -253,6 +253,7 @@ export interface VigenteListQuery {
   siglas?: string;
   entidad_federativa?: string;
   q?: string;
+  sort?: 'urgency' | 'score';
 }
 
 export function useVigentes(query: VigenteListQuery) {

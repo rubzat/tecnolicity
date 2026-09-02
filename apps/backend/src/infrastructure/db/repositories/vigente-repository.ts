@@ -1,7 +1,7 @@
 import { and, eq, ilike, or, sql, asc, inArray } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../../db/schema/index.js';
-import { vigenteProcedures } from '../../../db/schema/index.js';
+import { vigenteProcedures, opportunitySegmentStats } from '../../../db/schema/index.js';
 import { computePagination } from '../../../application/queries/pagination.js';
 import type {
   VigenteRepository,
@@ -34,6 +34,8 @@ function toRecord(row: typeof vigenteProcedures.$inferSelect): VigenteRecord {
     entidadFederativa: row.entidadFederativa,
     scrapedAt: row.scrapedAt,
     createdAt: row.createdAt,
+    score: null,
+    scoreBreakdown: null,
   };
 }
 
@@ -155,7 +157,12 @@ export class DrizzleVigenteRepository implements VigenteRepository {
     return { inserted: rows.length - updated, updated };
   }
 
-  async list(filter: VigenteFilter, page: number, pageSize: number): Promise<VigentePage> {
+  async list(
+    filter: VigenteFilter,
+    page: number,
+    pageSize: number,
+    sort: 'urgency' | 'score' = 'urgency',
+  ): Promise<VigentePage> {
     const where = buildFilter(filter);
 
     const totalRow = await this.db
@@ -166,23 +173,58 @@ export class DrizzleVigenteRepository implements VigenteRepository {
 
     const { offset, limit, meta } = computePagination(page, pageSize, total);
 
+    // Postgres pone los NULL primero en DESC por default — hay que forzarlo
+    // explícito para que las vigentes sin score no salgan arriba de las que sí tienen.
+    // Ambas ramas cierran con `numero_procedimiento` (único) como desempate
+    // final: sin él, las filas empatadas en todas las llaves previas pueden
+    // reordenarse entre requests y LIMIT/OFFSET repetiría o saltaría filas.
+    const orderBy =
+      sort === 'score'
+        ? [
+            sql`${opportunitySegmentStats.score} DESC NULLS LAST`,
+            asc(vigenteProcedures.fechaPresentacionApertura),
+            asc(vigenteProcedures.numeroProcedimiento),
+          ]
+        : [asc(vigenteProcedures.fechaPresentacionApertura), asc(vigenteProcedures.numeroProcedimiento)];
+
     const rows = await this.db
-      .select()
+      .select({
+        vigente: vigenteProcedures,
+        amountScore: opportunitySegmentStats.amountScore,
+        competitionScore: opportunitySegmentStats.competitionScore,
+        isDominated: opportunitySegmentStats.isDominated,
+        sampleSize: opportunitySegmentStats.sampleSize,
+        score: opportunitySegmentStats.score,
+      })
       .from(vigenteProcedures)
-      .where(where ?? sql`true`)
-      // Most urgent deadlines first. Procedures with no deadline sink to the
-      // bottom (NULLS LAST) so they never jump ahead of real, expiring bids.
-      .orderBy(
-        asc(vigenteProcedures.fechaPresentacionApertura),
-        asc(vigenteProcedures.numeroProcedimiento),
+      .leftJoin(
+        opportunitySegmentStats,
+        and(
+          eq(opportunitySegmentStats.tipoContratacion, vigenteProcedures.tipoContratacion),
+          eq(opportunitySegmentStats.siglasDependencia, vigenteProcedures.siglasDependencia),
+        ),
       )
+      .where(where ?? sql`true`)
+      .orderBy(...orderBy)
       .limit(limit)
       .offset(offset);
 
-    // Postgres NULLS is the default LAST for ASC, but be explicit-safe: any row
-    // whose deadline is null already sorts after non-null by ASC ordering, so
-    // no extra expression is needed here.
-    return { data: rows.map(toRecord), pagination: meta };
+    const data = rows.map((r) => {
+      const base = toRecord(r.vigente);
+      if (r.score == null) return base;
+      return {
+        ...base,
+        score: r.score,
+        scoreBreakdown: {
+          amountScore: r.amountScore!,
+          competitionScore: r.competitionScore!,
+          isDominated: r.isDominated!,
+          sampleSize: r.sampleSize!,
+        },
+      };
+    });
+
+    return { data, pagination: meta };
   }
 
   async getByNumero(numeroProcedimiento: string): Promise<VigenteRecord | null> {
