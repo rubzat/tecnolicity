@@ -195,6 +195,8 @@ function makeVigente(overrides: Partial<VigenteRecord> = {}): VigenteRecord {
     entidadFederativa: null,
     scrapedAt: new Date(),
     createdAt: new Date(),
+    score: null,
+    scoreBreakdown: null,
     ...overrides,
   };
 }

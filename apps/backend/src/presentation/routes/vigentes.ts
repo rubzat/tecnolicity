@@ -39,6 +39,7 @@ export function createVigentesRouter(deps: {
     siglas: z.string().trim().optional(),
     entidad_federativa: z.string().trim().optional(),
     q: z.string().trim().optional(),
+    sort: z.enum(['urgency', 'score']).default('urgency'),
   });
 
   // GET /vigentes — list with filters + pagination, most-urgent deadline first.
@@ -56,6 +57,7 @@ export function createVigentesRouter(deps: {
         },
         q.page,
         q.page_size,
+        q.sort,
       );
       res.json(serializePage(page));
     } catch (err) {
@@ -209,6 +211,15 @@ function serialize(r: VigenteRecord) {
     direcciones_anuncio: r.direccionesAnuncio,
     entidad_federativa: r.entidadFederativa,
     scraped_at: r.scrapedAt.toISOString(),
+    score: r.score,
+    score_breakdown: r.scoreBreakdown
+      ? {
+          amount_score: r.scoreBreakdown.amountScore,
+          competition_score: r.scoreBreakdown.competitionScore,
+          is_dominated: r.scoreBreakdown.isDominated,
+          sample_size: r.scoreBreakdown.sampleSize,
+        }
+      : null,
   };
 }
 

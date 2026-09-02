@@ -27,6 +27,16 @@ export interface VigenteRecord {
   scrapedAt: Date;
   /** Cuándo se vio esta vigente por primera vez (PR13: detecta "nueva"). */
   createdAt: Date;
+  /** Score de oportunidad 0-100 (PR14), o null si el segmento no tiene datos históricos suficientes. */
+  score: number | null;
+  scoreBreakdown: VigenteScoreBreakdown | null;
+}
+
+export interface VigenteScoreBreakdown {
+  amountScore: number;
+  competitionScore: number;
+  isDominated: boolean;
+  sampleSize: number;
 }
 
 /** Input shape for an upsert (natural key = numero_procedimiento). */
@@ -87,8 +97,8 @@ export interface VigenteRepository {
   /** Upsert a batch by numero_procedimiento; returns how many rows changed. */
   upsertMany(rows: UpsertVigenteInput[]): Promise<{ inserted: number; updated: number }>;
 
-  /** Filtered + paginated list, sorted by bid deadline ascending (most urgent first). */
-  list(filter: VigenteFilter, page: number, pageSize: number): Promise<VigentePage>;
+  /** Filtrado + paginado. `sort` por defecto ordena por fecha límite (más urgente primero); 'score' ordena por score de oportunidad descendente. */
+  list(filter: VigenteFilter, page: number, pageSize: number, sort?: 'urgency' | 'score'): Promise<VigentePage>;
 
   /** One procedure by its natural key, or null. */
   getByNumero(numeroProcedimiento: string): Promise<VigenteRecord | null>;
