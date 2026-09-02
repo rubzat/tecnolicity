@@ -13,3 +13,5 @@ export { documents, documentEstatusEnum } from './documents';
 export { vigenteProcedures } from './vigente-procedures';
 export { apiKeys } from './api-keys';
 export { users } from './users';
+export { savedSearches } from './saved-searches';
+export { savedSearchMatches } from './saved-search-matches';

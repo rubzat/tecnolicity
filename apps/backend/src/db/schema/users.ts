@@ -13,6 +13,8 @@ export const users = pgTable('users', {
   id: serial('id').primaryKey(),
   username: text('username').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
+  /** Destino de las alertas por email (PR13). Null = sin alertas configuradas. */
+  email: text('email').unique(),
   active: boolean('active').notNull().default(true),
   lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
   createdAt: createdAt(),
