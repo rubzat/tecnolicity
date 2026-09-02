@@ -1,7 +1,10 @@
-import { type ReactNode } from 'react';
+import { type InputHTMLAttributes, type ReactNode, useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { Button } from './ui';
 import type { ProcedureFilter } from '../types';
+
+/** Matches the debounce used by the supplier search (see api/queries.ts). */
+const FILTER_DEBOUNCE_MS = 300;
 
 /**
  * Dropdown options. These are the actual distinct values present in the
@@ -86,30 +89,30 @@ export function FilterSidebar({ value, onChange, onReset, openOnMobile = false, 
 
         <div className="space-y-4">
           <Field label="Búsqueda">
-            <input
+            <DebouncedInput
               type="search"
               value={value.q ?? ''}
-              onChange={(e) => onChange({ q: e.target.value })}
+              onDebouncedChange={(v) => onChange({ q: v })}
               placeholder="Palabra en título o descripción"
               className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm shadow-sm focus:border-institucional focus:outline-none focus:ring-1 focus:ring-institucional"
             />
           </Field>
 
           <Field label="Institución">
-            <input
+            <DebouncedInput
               type="text"
               value={value.institucion ?? ''}
-              onChange={(e) => onChange({ institucion: e.target.value })}
+              onDebouncedChange={(v) => onChange({ institucion: v })}
               placeholder="Nombre o parte"
               className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm shadow-sm focus:border-institucional focus:outline-none focus:ring-1 focus:ring-institucional"
             />
           </Field>
 
           <Field label="Proveedor">
-            <input
+            <DebouncedInput
               type="text"
               value={value.proveedor ?? ''}
-              onChange={(e) => onChange({ proveedor: e.target.value })}
+              onDebouncedChange={(v) => onChange({ proveedor: v })}
               placeholder="RFC o nombre"
               className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm shadow-sm focus:border-institucional focus:outline-none focus:ring-1 focus:ring-institucional"
             />
@@ -188,6 +191,38 @@ export function FilterSidebar({ value, onChange, onReset, openOnMobile = false, 
       </div>
     </aside>
   );
+}
+
+interface DebouncedInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> {
+  value: string;
+  onDebouncedChange: (value: string) => void;
+}
+
+/**
+ * Free-text filter input. Types into local state immediately, and only
+ * calls `onDebouncedChange` (which pushes to the URL and fires the query)
+ * once the user pauses for FILTER_DEBOUNCE_MS — otherwise every keystroke
+ * triggered its own request.
+ */
+function DebouncedInput({ value, onDebouncedChange, ...inputProps }: DebouncedInputProps) {
+  const [draft, setDraft] = useState(value);
+  const onDebouncedChangeRef = useRef(onDebouncedChange);
+  onDebouncedChangeRef.current = onDebouncedChange;
+
+  // Reflect external resets (e.g. "Limpiar filtros", browser back/forward)
+  // that didn't originate from this field's own typing.
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
+
+  useEffect(() => {
+    if (draft === value) return;
+    const timer = setTimeout(() => onDebouncedChangeRef.current(draft), FILTER_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-arm on draft changes; onDebouncedChange is read via ref to avoid resetting the timer on unrelated re-renders
+  }, [draft]);
+
+  return <input {...inputProps} value={draft} onChange={(e) => setDraft(e.target.value)} />;
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {

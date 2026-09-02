@@ -1,4 +1,4 @@
-import { and, eq, ilike, or, sql, asc, inArray } from 'drizzle-orm';
+import { and, eq, gte, ilike, isNull, or, sql, asc, inArray } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../../db/schema/index.js';
 import { vigenteProcedures, opportunitySegmentStats } from '../../../db/schema/index.js';
@@ -163,12 +163,23 @@ export class DrizzleVigenteRepository implements VigenteRepository {
     pageSize: number,
     sort: 'urgency' | 'score' = 'urgency',
   ): Promise<VigentePage> {
-    const where = buildFilter(filter);
+    const userFilter = buildFilter(filter);
+    // The scraper never deletes or expires rows (see upsertMany) — a
+    // procedure stays in this table forever once scraped, even after
+    // ComprasMX stops listing it. Without this, "vigentes" silently
+    // accumulates every procedure ever seen instead of just the open ones.
+    // A NULL deadline (some procedures never carry one) counts as open —
+    // there's nothing to have expired against.
+    const openOnly = or(
+      isNull(vigenteProcedures.fechaPresentacionApertura),
+      gte(vigenteProcedures.fechaPresentacionApertura, sql`now()`),
+    )!;
+    const where = userFilter ? and(userFilter, openOnly) : openOnly;
 
     const totalRow = await this.db
       .select({ total: sql<number>`count(*)::int` })
       .from(vigenteProcedures)
-      .where(where ?? sql`true`);
+      .where(where);
     const total = totalRow[0]?.total ?? 0;
 
     const { offset, limit, meta } = computePagination(page, pageSize, total);
@@ -204,7 +215,7 @@ export class DrizzleVigenteRepository implements VigenteRepository {
           eq(opportunitySegmentStats.siglasDependencia, vigenteProcedures.siglasDependencia),
         ),
       )
-      .where(where ?? sql`true`)
+      .where(where)
       .orderBy(...orderBy)
       .limit(limit)
       .offset(offset);
