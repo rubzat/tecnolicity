@@ -47,6 +47,8 @@ import { createVigentesRouter } from './routes/vigentes.js';
 import { createAdminAuthRouter } from './routes/admin-auth.js';
 import { createAdminApiKeysRouter } from './routes/admin-api-keys.js';
 import { createAdminUsersRouter } from './routes/admin-users.js';
+import { createAdminSavedSearchesRouter } from './routes/admin-saved-searches.js';
+import { DrizzleSavedSearchRepository } from '../infrastructure/db/repositories/saved-search-repository.js';
 import { apiKeyLookup, publicRateLimiter } from './middleware/rate-limit.js';
 import { startVigenteCron, stopVigenteCron } from '../infrastructure/scheduler/vigente-cron.js';
 
@@ -143,6 +145,7 @@ export function createApp(dbClient: Db = db): Express {
   // Login accounts (PR12) — every route under /api/admin/* needs this to
   // check sessions, so it's built once here and threaded through.
   const userRepo = new DrizzleUserRepository(dbClient);
+  const savedSearchRepo = new DrizzleSavedSearchRepository(dbClient);
 
   // Health check (also serves as the DB liveness probe).
   app.get('/api/health', (_req: Request, res: Response) => {
@@ -163,6 +166,7 @@ export function createApp(dbClient: Db = db): Express {
   app.use('/api/admin', createAdminAuthRouter({ users: userRepo }));
   app.use('/api/admin/api-keys', createAdminApiKeysRouter({ repository: apiKeyRepo, users: userRepo }));
   app.use('/api/admin/users', createAdminUsersRouter({ users: userRepo }));
+  app.use('/api/admin/saved-searches', createAdminSavedSearchesRouter({ savedSearches: savedSearchRepo, users: userRepo }));
 
   // Public read API — baseline rate limit per IP, raised per-key when a
   // valid X-API-Key header resolves to an active admin-issued key (PR11).
