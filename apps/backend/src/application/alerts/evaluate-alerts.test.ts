@@ -213,10 +213,11 @@ describe('EvaluateAlerts', () => {
     const { usecase, savedSearches, vigentes, users, email, matches } = makeDeps();
     const user = await users.create({ username: 'ana', passwordHash: 'x', email: 'ana@example.com' });
     const search = await savedSearches.create({ userId: user.id, name: 'Obra SICT', filters: { siglas: 'SICT' } });
-    const runStart = new Date('2026-09-01T06:00:00Z');
+    // Ancla fija: la vigente es "nueva" relativa a la búsqueda, sin depender del reloj real.
+    search.createdAt = new Date('2026-01-01T00:00:00Z');
     vigentes.rows.push(makeVigente({ id: 1, createdAt: new Date('2026-09-01T06:05:00Z') }));
 
-    const summary = await usecase.execute(runStart);
+    const summary = await usecase.execute();
 
     expect(summary.eventsDetected).toBe(1);
     expect(summary.usersNotified).toBe(1);
@@ -231,10 +232,11 @@ describe('EvaluateAlerts', () => {
     const { usecase, savedSearches, vigentes, users, email, matches } = makeDeps();
     const user = await users.create({ username: 'ana', passwordHash: 'x', email: 'ana@example.com' });
     const search = await savedSearches.create({ userId: user.id, name: 'Obra SICT', filters: { siglas: 'SICT' } });
-    const runStart = new Date('2026-09-01T06:00:00Z');
+    // La búsqueda se creó DESPUÉS de que apareciera la vigente → línea base silenciosa.
+    search.createdAt = new Date('2026-06-01T00:00:00Z');
     vigentes.rows.push(makeVigente({ id: 1, createdAt: new Date('2026-01-01T00:00:00Z') }));
 
-    const summary = await usecase.execute(runStart);
+    const summary = await usecase.execute();
 
     expect(summary.eventsDetected).toBe(0);
     expect(email.sent).toHaveLength(0);
@@ -249,7 +251,7 @@ describe('EvaluateAlerts', () => {
     await matches.createState(search.id, 1, 'PUBLICADA');
     vigentes.rows.push(makeVigente({ id: 1, estatus: 'EN EVALUACIÓN' }));
 
-    const summary = await usecase.execute(new Date());
+    const summary = await usecase.execute();
 
     expect(summary.eventsDetected).toBe(1);
     expect(email.sent[0]!.text).toContain('PUBLICADA');
@@ -268,7 +270,7 @@ describe('EvaluateAlerts', () => {
       makeVigente({ id: 1, fechaPresentacionApertura: new Date('2026-09-03T12:00:00Z') }),
     );
 
-    const summary = await usecase.execute(now, now);
+    const summary = await usecase.execute(now);
 
     expect(summary.eventsDetected).toBe(1);
     const state = await matches.findState(search.id, 1);
@@ -286,7 +288,7 @@ describe('EvaluateAlerts', () => {
       makeVigente({ id: 1, fechaPresentacionApertura: new Date('2026-09-03T12:00:00Z') }),
     );
 
-    const summary = await usecase.execute(now, now);
+    const summary = await usecase.execute(now);
 
     expect(summary.eventsDetected).toBe(0);
     expect(email.sent).toHaveLength(0);
@@ -299,7 +301,7 @@ describe('EvaluateAlerts', () => {
     await savedSearches.update(search.id, { active: false });
     vigentes.rows.push(makeVigente({ id: 1, createdAt: new Date() }));
 
-    const summary = await usecase.execute(new Date(0));
+    const summary = await usecase.execute();
 
     expect(summary.searchesEvaluated).toBe(0);
     expect(email.sent).toHaveLength(0);
@@ -309,10 +311,10 @@ describe('EvaluateAlerts', () => {
     const { usecase, savedSearches, vigentes, users, email, matches } = makeDeps();
     const user = await users.create({ username: 'ana', passwordHash: 'x', email: null });
     const search = await savedSearches.create({ userId: user.id, name: 'Obra SICT', filters: { siglas: 'SICT' } });
-    const runStart = new Date('2026-09-01T06:00:00Z');
+    search.createdAt = new Date('2026-01-01T00:00:00Z');
     vigentes.rows.push(makeVigente({ id: 1, createdAt: new Date('2026-09-01T06:05:00Z') }));
 
-    const summary = await usecase.execute(runStart);
+    const summary = await usecase.execute();
 
     expect(summary.eventsDetected).toBe(1);
     expect(summary.usersNotified).toBe(0);
@@ -326,38 +328,82 @@ describe('EvaluateAlerts', () => {
     const okUser = await users.create({ username: 'beto', passwordHash: 'x', email: 'beto@example.com' });
     const searchA = await savedSearches.create({ userId: failingUser.id, name: 'Búsqueda A', filters: { siglas: 'SICT' } });
     const searchB = await savedSearches.create({ userId: okUser.id, name: 'Búsqueda B', filters: { siglas: 'IMSS' } });
-    const runStart = new Date('2026-09-01T06:00:00Z');
+    searchA.createdAt = new Date('2026-01-01T00:00:00Z');
+    searchB.createdAt = new Date('2026-01-01T00:00:00Z');
     vigentes.rows.push(
       makeVigente({ id: 1, siglasDependencia: 'SICT', createdAt: new Date('2026-09-01T06:05:00Z') }),
       makeVigente({ id: 2, numeroProcedimiento: 'BB-002-2026', siglasDependencia: 'IMSS', createdAt: new Date('2026-09-01T06:05:00Z') }),
     );
     email.shouldFail = true;
 
-    const summary = await usecase.execute(runStart);
+    const summary = await usecase.execute();
+    expect(summary.eventsDetected).toBe(2);
     expect(summary.usersNotified).toBe(0);
+    expect(email.sent).toHaveLength(0);
     expect(await matches.findState(searchA.id, 1)).toBeNull();
     expect(await matches.findState(searchB.id, 2)).toBeNull();
 
+    // Segunda corrida: la frescura está anclada a search.createdAt (fijo), así
+    // que los mismos new_match se vuelven a detectar y ahora sí se envían.
     email.shouldFail = false;
-    const secondSummary = await usecase.execute(runStart);
+    const secondSummary = await usecase.execute();
+    expect(secondSummary.eventsDetected).toBe(2);
     expect(secondSummary.usersNotified).toBe(2);
+    expect(email.sent).toHaveLength(2);
+    expect(email.sent.map((m) => m.to).sort()).toEqual(['ana@example.com', 'beto@example.com']);
+    expect(email.sent[0]!.subject).toContain('1 nueva(s)');
+    expect(await matches.findState(searchA.id, 1)).not.toBeNull();
+    expect(await matches.findState(searchB.id, 2)).not.toBeNull();
   });
 
   it('agrupa varios eventos del mismo usuario en un solo correo (digest)', async () => {
     const { usecase, savedSearches, vigentes, users, email } = makeDeps();
     const user = await users.create({ username: 'ana', passwordHash: 'x', email: 'ana@example.com' });
-    await savedSearches.create({ userId: user.id, name: 'Búsqueda A', filters: { siglas: 'SICT' } });
-    await savedSearches.create({ userId: user.id, name: 'Búsqueda B', filters: { siglas: 'IMSS' } });
-    const runStart = new Date('2026-09-01T06:00:00Z');
+    const searchA = await savedSearches.create({ userId: user.id, name: 'Búsqueda A', filters: { siglas: 'SICT' } });
+    const searchB = await savedSearches.create({ userId: user.id, name: 'Búsqueda B', filters: { siglas: 'IMSS' } });
+    searchA.createdAt = new Date('2026-01-01T00:00:00Z');
+    searchB.createdAt = new Date('2026-01-01T00:00:00Z');
     vigentes.rows.push(
       makeVigente({ id: 1, siglasDependencia: 'SICT', createdAt: new Date('2026-09-01T06:05:00Z') }),
       makeVigente({ id: 2, numeroProcedimiento: 'BB-002-2026', siglasDependencia: 'IMSS', createdAt: new Date('2026-09-01T06:05:00Z') }),
     );
 
-    const summary = await usecase.execute(runStart);
+    const summary = await usecase.execute();
 
     expect(summary.eventsDetected).toBe(2);
     expect(email.sent).toHaveLength(1); // un solo correo, no dos
     expect(email.sent[0]!.subject).toContain('2 nueva(s)');
+  });
+
+  it('new_match + closing_soon en la misma corrida: createState corre ANTES que markClosingSoonNotified', async () => {
+    const { usecase, savedSearches, vigentes, users, email, matches } = makeDeps();
+    const user = await users.create({ username: 'ana', passwordHash: 'x', email: 'ana@example.com' });
+    const search = await savedSearches.create({ userId: user.id, name: 'Obra SICT', filters: { siglas: 'SICT' } });
+    search.createdAt = new Date('2026-01-01T00:00:00Z');
+    const now = new Date('2026-09-01T12:00:00Z');
+    // Vigente vista por primera vez (sin fila de estado previa) que además cierra en 2 días.
+    vigentes.rows.push(
+      makeVigente({
+        id: 1,
+        createdAt: new Date('2026-09-01T06:05:00Z'),
+        fechaPresentacionApertura: new Date('2026-09-03T12:00:00Z'),
+      }),
+    );
+
+    const summary = await usecase.execute(now);
+
+    // (a) los dos eventos viajan en un solo correo
+    expect(summary.eventsDetected).toBe(2);
+    expect(email.sent).toHaveLength(1);
+    expect(email.sent[0]!.text).toContain('Nueva coincidencia');
+    expect(email.sent[0]!.text).toContain('Cierre próximo');
+
+    // (b) markClosingSoonNotified es un UPDATE plano sin upsert: si su closure
+    // hubiera corrido antes que la de createState, no habría fila que actualizar
+    // y closingSoonNotifiedAt se quedaría en null sin error alguno.
+    const state = await matches.findState(search.id, 1);
+    expect(state).not.toBeNull();
+    expect(state!.lastEstatus).toBe('PUBLICADA');
+    expect(state!.closingSoonNotifiedAt).not.toBeNull();
   });
 });

@@ -41,11 +41,17 @@ interface PendingEvent {
  * usuario se agrupan en un solo correo digest. La persistencia del "ya
  * notificado" ocurre SOLO después de un envío exitoso, para que un fallo de
  * red se reintente automáticamente en la corrida del día siguiente.
+ *
+ * Ese reintento depende de que la "frescura" de una vigente se mida contra
+ * `search.createdAt` (un instante fijo) y no contra el inicio de la corrida
+ * (que avanza cada día): así, el mismo new_match se vuelve a detectar mañana
+ * en lugar de degradarse a línea base silenciosa. `now` solo se usa para la
+ * ventana de cierre próximo y es inyectable para tests deterministas.
  */
 export class EvaluateAlerts {
   constructor(private readonly deps: EvaluateAlertsDeps) {}
 
-  async execute(scrapeRunStartedAt: Date, now: Date = new Date()): Promise<EvaluateAlertsSummary> {
+  async execute(now: Date = new Date()): Promise<EvaluateAlertsSummary> {
     const searches = await this.deps.savedSearches.listActive();
     const eventsByUser = new Map<number, PendingEvent[]>();
     let eventsDetected = 0;
@@ -66,7 +72,7 @@ export class EvaluateAlerts {
       );
 
       for (const vigente of page.data) {
-        const pending = await this.evaluateOne(search, vigente, scrapeRunStartedAt, now);
+        const pending = await this.evaluateOne(search, vigente, now);
         if (pending.length === 0) continue;
         eventsDetected += pending.length;
         const list = eventsByUser.get(search.userId) ?? [];
@@ -87,7 +93,6 @@ export class EvaluateAlerts {
   private async evaluateOne(
     search: SavedSearchRecord,
     vigente: VigenteRecord,
-    scrapeRunStartedAt: Date,
     now: Date,
   ): Promise<PendingEvent[]> {
     const pending: PendingEvent[] = [];
@@ -95,8 +100,13 @@ export class EvaluateAlerts {
     let closingSoonAlreadyNotified = state?.closingSoonNotifiedAt != null;
 
     if (!state) {
-      const isFreshFromThisRun = vigente.createdAt.getTime() >= scrapeRunStartedAt.getTime();
-      if (isFreshFromThisRun) {
+      // Anclado a `search.createdAt`, NO al inicio de la corrida: ese instante
+      // es fijo, así que la comparación da el mismo resultado en cada corrida.
+      // Si se anclara al inicio de la corrida (que avanza cada día), un
+      // new_match cuyo envío falló se re-evaluaría mañana como "vieja" y caería
+      // en la línea base silenciosa — perdiendo la alerta para siempre.
+      const isNewerThanSearch = vigente.createdAt.getTime() >= search.createdAt.getTime();
+      if (isNewerThanSearch) {
         pending.push({
           event: {
             type: 'new_match',
@@ -163,8 +173,18 @@ export class EvaluateAlerts {
       const digest = buildDigest(pending.map((p) => p.event), this.deps.baseUrl);
       await this.deps.email.send({ to: user.email, subject: digest.subject, text: digest.text, html: digest.html });
 
+      // El correo YA salió: cada persist() se aísla para que un fallo puntual
+      // de DB no impida los demás. Saltarse el resto provocaría un correo
+      // duplicado mañana solo para los eventos que quedaron sin persistir.
       for (const p of pending) {
-        await p.persist();
+        try {
+          await p.persist();
+        } catch (err) {
+          console.error(
+            `[alerts] correo enviado al usuario ${userId} pero no se pudo persistir el estado del evento ${p.event.type} (${p.event.numeroProcedimiento}):`,
+            err,
+          );
+        }
       }
       return true;
     } catch (err) {
