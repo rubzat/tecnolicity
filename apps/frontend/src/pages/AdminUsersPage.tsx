@@ -180,7 +180,12 @@ function UsersTable({ users, currentUserId }: { users: UserSummary[]; currentUse
                 </td>
                 <td className="px-4 py-3 align-top">
                   {editEmailId === u.id ? (
-                    <EditEmailForm userId={u.id} onDone={() => setEditEmailId(null)} onCancel={() => setEditEmailId(null)} />
+                    <EditEmailForm
+                      userId={u.id}
+                      currentEmail={u.email}
+                      onDone={() => setEditEmailId(null)}
+                      onCancel={() => setEditEmailId(null)}
+                    />
                   ) : (
                     <button
                       type="button"
@@ -258,9 +263,19 @@ function UsersTable({ users, currentUserId }: { users: UserSummary[]; currentUse
   );
 }
 
-function EditEmailForm({ userId, onDone, onCancel }: { userId: number; onDone: () => void; onCancel: () => void }) {
+function EditEmailForm({
+  userId,
+  currentEmail,
+  onDone,
+  onCancel,
+}: {
+  userId: number;
+  currentEmail: string | null;
+  onDone: () => void;
+  onCancel: () => void;
+}) {
   const update = useUpdateUser();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(currentEmail ?? '');
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
