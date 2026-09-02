@@ -133,6 +133,9 @@ class FakeUserRepository implements UserRepository {
   async findById(id: number) {
     return this.rows.find((r) => r.id === id) ?? null;
   }
+  async findByEmail(email: string) {
+    return this.rows.find((r) => r.email === email) ?? null;
+  }
   async create(input: CreateUserInput) {
     const row: UserRecord = {
       id: this.rows.length + 1,
