@@ -62,6 +62,13 @@ const envSchema = z.object({
   // raises the caller's limit to its own configured value instead.
   PUBLIC_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).default(30),
   API_KEY_DEFAULT_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).default(300),
+
+  // --- Email alerts (saved searches, PR13) ----------------------------------
+  // Elastic Email API key. Opcional: si no está seteada, la evaluación de
+  // alertas sigue corriendo pero los correos solo se loguean (ver
+  // infrastructure/email/null-email-sender.ts).
+  ELASTIC_EMAIL_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().default('alertas@tecnolicity.mx'),
 });
 
 const parsed = envSchema.safeParse(process.env);

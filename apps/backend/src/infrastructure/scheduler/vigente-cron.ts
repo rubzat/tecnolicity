@@ -15,11 +15,19 @@ import { env } from '../../config/env.js';
  *   SCRAPE_CRON_SCHEDULE="0 6 * * *"   # 6 AM daily (default)
  *
  * The cron runs in the server's timezone (process.env.TZ or system default).
+ *
+ * `onScrapeComplete` (PR13): llamado con el timestamp de inicio del scrape
+ * cuando termina exitosamente (exit code 0) — usado para evaluar alertas
+ * sobre las vigentes tocadas en esa corrida.
  */
+
+export interface VigenteCronDeps {
+  onScrapeComplete?: (scrapeRunStartedAt: Date) => void | Promise<void>;
+}
 
 let task: ScheduledTask | null = null;
 
-export function startVigenteCron(): void {
+export function startVigenteCron(deps: VigenteCronDeps = {}): void {
   if (!env.SCRAPE_CRON_ENABLED) {
     console.log(
       '[cron] vigente scraper disabled (set SCRAPE_CRON_ENABLED=true to enable)',
@@ -37,7 +45,7 @@ export function startVigenteCron(): void {
   console.log(`[cron] vigente scraper scheduled: "${env.SCRAPE_CRON_SCHEDULE}"`);
 
   task = cron.schedule(env.SCRAPE_CRON_SCHEDULE, () => {
-    void runScrape();
+    void runScrape(deps.onScrapeComplete);
   });
 }
 
@@ -53,7 +61,7 @@ export function stopVigenteCron(): void {
  * Spawn the scraper CLI as a child process and stream its output.
  * Isolated so a Playwright crash can't take down the HTTP server.
  */
-function runScrape(): Promise<void> {
+function runScrape(onScrapeComplete?: (scrapeRunStartedAt: Date) => void | Promise<void>): Promise<void> {
   return new Promise((resolvePromise) => {
     const started = new Date();
     console.log(`[cron] ▶ starting vigente scrape at ${started.toISOString()}`);
@@ -87,6 +95,7 @@ function runScrape(): Promise<void> {
       const elapsed = ((Date.now() - started.getTime()) / 1000).toFixed(1);
       if (code === 0) {
         console.log(`[cron] ✔ vigente scrape completed in ${elapsed}s`);
+        void onScrapeComplete?.(started);
       } else {
         console.error(
           `[cron] ✗ vigente scrape failed (exit ${code}) in ${elapsed}s`,
