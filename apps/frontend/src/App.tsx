@@ -36,6 +36,9 @@ const AdminApiKeysPage = lazy(() =>
 const AdminUsersPage = lazy(() =>
   import('./pages/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage })),
 );
+const AdminAlertsPage = lazy(() =>
+  import('./pages/AdminAlertsPage').then((m) => ({ default: m.AdminAlertsPage })),
+);
 const ApiDocsPage = lazy(() => import('./pages/ApiDocsPage').then((m) => ({ default: m.ApiDocsPage })));
 
 const queryClient = new QueryClient({
@@ -154,6 +157,14 @@ export function App() {
                 element={
                   <Suspense fallback={<RouteFallback>Cargando…</RouteFallback>}>
                     <AdminUsersPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/admin/alertas"
+                element={
+                  <Suspense fallback={<RouteFallback>Cargando…</RouteFallback>}>
+                    <AdminAlertsPage />
                   </Suspense>
                 }
               />

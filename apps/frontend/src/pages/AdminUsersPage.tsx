@@ -80,16 +80,18 @@ function CreateUserForm() {
   const create = useCreateUser();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('');
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!username.trim() || password.length < 8) return;
     create.mutate(
-      { username: username.trim(), password },
+      { username: username.trim(), password, ...(email.trim() ? { email: email.trim() } : {}) },
       {
         onSuccess: () => {
           setUsername('');
           setPassword('');
+          setEmail('');
         },
       },
     );
@@ -130,6 +132,16 @@ function CreateUserForm() {
           minLength={8}
         />
       </div>
+      <div className="min-w-[12rem] flex-1">
+        <label className="mb-1 block text-xs font-medium text-slate-600">Email (opcional)</label>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="para alertas"
+          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-institucional focus:outline-none focus:ring-1 focus:ring-institucional"
+        />
+      </div>
       <Button type="submit" disabled={create.isPending || !username.trim() || password.length < 8}>
         {create.isPending ? <Spinner className="h-4 w-4" /> : 'Crear usuario'}
       </Button>
@@ -142,6 +154,7 @@ function UsersTable({ users, currentUserId }: { users: UserSummary[]; currentUse
   const del = useDeleteUser();
   const [confirmId, setConfirmId] = useState<number | null>(null);
   const [resetId, setResetId] = useState<number | null>(null);
+  const [editEmailId, setEditEmailId] = useState<number | null>(null);
 
   return (
     <ScrollShadowX>
@@ -149,6 +162,7 @@ function UsersTable({ users, currentUserId }: { users: UserSummary[]; currentUse
         <thead className="bg-slate-50">
           <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
             <th className="px-4 py-2.5">Usuario</th>
+            <th className="px-4 py-2.5">Email</th>
             <th className="px-4 py-2.5">Último acceso</th>
             <th className="px-4 py-2.5">Estado</th>
             <th className="px-4 py-2.5" />
@@ -163,6 +177,19 @@ function UsersTable({ users, currentUserId }: { users: UserSummary[]; currentUse
                   <div className="font-medium text-slate-900">
                     {u.username} {isSelf && <span className="text-xs font-normal text-slate-400">(tú)</span>}
                   </div>
+                </td>
+                <td className="px-4 py-3 align-top">
+                  {editEmailId === u.id ? (
+                    <EditEmailForm userId={u.id} onDone={() => setEditEmailId(null)} onCancel={() => setEditEmailId(null)} />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setEditEmailId(u.id)}
+                      className="text-xs text-slate-600 hover:text-institucional hover:underline"
+                    >
+                      {u.email ?? 'Sin email — click para agregar'}
+                    </button>
+                  )}
                 </td>
                 <td className="px-4 py-3 align-top text-xs text-slate-500">
                   {u.last_login_at ? formatDateTime(u.last_login_at) : 'Nunca'}
@@ -228,6 +255,35 @@ function UsersTable({ users, currentUserId }: { users: UserSummary[]; currentUse
         </tbody>
       </table>
     </ScrollShadowX>
+  );
+}
+
+function EditEmailForm({ userId, onDone, onCancel }: { userId: number; onDone: () => void; onCancel: () => void }) {
+  const update = useUpdateUser();
+  const [email, setEmail] = useState('');
+
+  function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    update.mutate({ id: userId, email: email.trim() || null }, { onSuccess: onDone });
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="flex items-center gap-2">
+      <input
+        type="email"
+        autoFocus
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="email@ejemplo.com"
+        className="w-44 rounded-md border border-slate-300 px-2 py-1.5 text-xs focus:border-institucional focus:outline-none focus:ring-1 focus:ring-institucional"
+      />
+      <Button type="submit" size="sm" disabled={update.isPending}>
+        {update.isPending ? <Spinner className="h-3 w-3" /> : 'Guardar'}
+      </Button>
+      <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+        Cancelar
+      </Button>
+    </form>
   );
 }
 
