@@ -20,6 +20,7 @@ const navItems = [
   { to: '/docs', label: 'API', end: false },
   { to: '/admin/api-keys', label: 'API keys', end: false },
   { to: '/admin/users', label: 'Usuarios', end: false },
+  { to: '/admin/alertas', label: 'Alertas', end: false },
 ];
 
 /**

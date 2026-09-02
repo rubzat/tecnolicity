@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { differenceInCalendarDays, isValid, parseISO } from 'date-fns';
 import { AnimatePresence } from 'motion/react';
 import { useVigentes, useScrapeVigentes } from '../api/queries';
@@ -72,8 +73,13 @@ function deadlineLabel(days: number | null): string {
  * which runs Playwright against ComprasMX (~50s for ~1.1k rows).
  */
 export function OpportunitiesPage() {
+  // Los correos de alertas enlazan a /oportunidades?q=<numero-procedimiento>:
+  // se lee una sola vez al montar, para que la página cargue ya filtrada.
+  const [searchParams] = useSearchParams();
+  const initialQ = searchParams.get('q') ?? '';
+
   const [page, setPage] = useState(1);
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState(initialQ);
   const [tipoContratacion, setTipoContratacion] = useState('');
   const [tipoProcedimiento, setTipoProcedimiento] = useState('');
   const [dependencia, setDependencia] = useState('');
@@ -82,7 +88,7 @@ export function OpportunitiesPage() {
     tipo: string;
     proc: string;
     dep: string;
-  }>({ q: '', tipo: '', proc: '', dep: '' });
+  }>({ q: initialQ, tipo: '', proc: '', dep: '' });
 
   // PR8: the currently-selected procedure whose detail drawer is open (null = closed).
   const [selected, setSelected] = useState<VigenteItem | null>(null);

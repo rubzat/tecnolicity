@@ -58,6 +58,10 @@ services:
       SESSION_TTL_MS: ${SESSION_TTL_MS:-604800000}
       PUBLIC_RATE_LIMIT_PER_MINUTE: ${PUBLIC_RATE_LIMIT_PER_MINUTE:-30}
       API_KEY_DEFAULT_RATE_LIMIT_PER_MINUTE: ${API_KEY_DEFAULT_RATE_LIMIT_PER_MINUTE:-300}
+      # Email alerts (saved searches, PR13). Opcional — si no está seteada,
+      # las alertas se evalúan pero los correos solo se loguean.
+      ELASTIC_EMAIL_API_KEY: ${ELASTIC_EMAIL_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-alertas@tecnolicity.mx}
     volumes:
       - backend_storage:/app/apps/backend/storage
       # Mount source data on the host to run `pnpm ingest` inside the

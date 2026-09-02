@@ -33,6 +33,7 @@ function toRecord(row: typeof vigenteProcedures.$inferSelect): VigenteRecord {
     direccionesAnuncio: row.direccionesAnuncio,
     entidadFederativa: row.entidadFederativa,
     scrapedAt: row.scrapedAt,
+    createdAt: row.createdAt,
   };
 }
 

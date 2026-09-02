@@ -7,17 +7,20 @@ import { createRequireAdmin } from '../middleware/require-admin.js';
 const createBody = z.object({
   username: z.string().trim().min(1, 'username is required'),
   password: z.string().min(8, 'password must be at least 8 characters'),
+  email: z.string().trim().email().optional(),
 });
 
 const updateBody = z.object({
   active: z.boolean().optional(),
   password: z.string().min(8).optional(),
+  email: z.string().trim().email().nullable().optional(),
 });
 
 function serialize(u: UserRecord) {
   return {
     id: u.id,
     username: u.username,
+    email: u.email,
     active: u.active,
     last_login_at: u.lastLoginAt ? u.lastLoginAt.toISOString() : null,
     created_at: u.createdAt.toISOString(),
@@ -46,8 +49,15 @@ export function createAdminUsersRouter(deps: { users: UserRepository }): Router 
         res.status(409).json({ error: 'username_taken', message: 'Ese nombre de usuario ya existe.' });
         return;
       }
+      if (body.email) {
+        const existingEmail = await deps.users.findByEmail(body.email);
+        if (existingEmail) {
+          res.status(409).json({ error: 'email_taken', message: 'Ese email ya está en uso por otra cuenta.' });
+          return;
+        }
+      }
       const passwordHash = await hashPassword(body.password);
-      const created = await deps.users.create({ username: body.username, passwordHash });
+      const created = await deps.users.create({ username: body.username, passwordHash, email: body.email ?? null });
       res.status(201).json(serialize(created));
     } catch (err) {
       next(err);
@@ -65,6 +75,14 @@ export function createAdminUsersRouter(deps: { users: UserRepository }): Router 
         }
         const body = updateBody.parse(req.body);
 
+        if (body.email) {
+          const existingEmail = await deps.users.findByEmail(body.email);
+          if (existingEmail && existingEmail.id !== id) {
+            res.status(409).json({ error: 'email_taken', message: 'Ese email ya está en uso por otra cuenta.' });
+            return;
+          }
+        }
+
         // Guard: never let the last active account be deactivated — that
         // would lock everyone out with no way back in short of a DB console.
         if (body.active === false) {
@@ -78,9 +96,10 @@ export function createAdminUsersRouter(deps: { users: UserRepository }): Router 
           }
         }
 
-        const patch: { active?: boolean; passwordHash?: string } = {};
+        const patch: { active?: boolean; passwordHash?: string; email?: string | null } = {};
         if (body.active !== undefined) patch.active = body.active;
         if (body.password !== undefined) patch.passwordHash = await hashPassword(body.password);
+        if (body.email !== undefined) patch.email = body.email;
 
         const updated = await deps.users.update(id, patch);
         if (!updated) {

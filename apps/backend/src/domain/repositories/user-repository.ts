@@ -9,6 +9,7 @@ export interface UserRecord {
   id: number;
   username: string;
   passwordHash: string;
+  email: string | null;
   active: boolean;
   lastLoginAt: Date | null;
   createdAt: Date;
@@ -17,17 +18,21 @@ export interface UserRecord {
 export interface CreateUserInput {
   username: string;
   passwordHash: string;
+  email?: string | null;
 }
 
 export interface UpdateUserInput {
   active?: boolean;
   passwordHash?: string;
+  email?: string | null;
 }
 
 export interface UserRepository {
   count(): Promise<number>;
   list(): Promise<UserRecord[]>;
   findByUsername(username: string): Promise<UserRecord | null>;
+  findById(id: number): Promise<UserRecord | null>;
+  findByEmail(email: string): Promise<UserRecord | null>;
   create(input: CreateUserInput): Promise<UserRecord>;
   update(id: number, patch: UpdateUserInput): Promise<UserRecord | null>;
   delete(id: number): Promise<boolean>;

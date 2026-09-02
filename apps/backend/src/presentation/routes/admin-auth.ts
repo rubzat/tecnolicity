@@ -64,12 +64,17 @@ export function createAdminAuthRouter(deps: { users: UserRepository }): Router {
       const token = req.cookies?.[SESSION_COOKIE_NAME];
       const payload = typeof token === 'string' ? verifySessionToken(token, env.SESSION_SECRET) : null;
       if (!payload) {
-        res.json({ authenticated: false, username: null, user_id: null });
+        res.json({ authenticated: false, username: null, user_id: null, email: null });
         return;
       }
       const user = await deps.users.findByUsername(payload.sub);
       const ok = user !== null && user.active && user.id === payload.uid;
-      res.json({ authenticated: ok, username: ok ? user!.username : null, user_id: ok ? user!.id : null });
+      res.json({
+        authenticated: ok,
+        username: ok ? user!.username : null,
+        user_id: ok ? user!.id : null,
+        email: ok ? user!.email : null,
+      });
     } catch (err) {
       next(err);
     }

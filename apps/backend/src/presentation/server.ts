@@ -47,6 +47,13 @@ import { createVigentesRouter } from './routes/vigentes.js';
 import { createAdminAuthRouter } from './routes/admin-auth.js';
 import { createAdminApiKeysRouter } from './routes/admin-api-keys.js';
 import { createAdminUsersRouter } from './routes/admin-users.js';
+import { createAdminSavedSearchesRouter } from './routes/admin-saved-searches.js';
+import { DrizzleSavedSearchRepository } from '../infrastructure/db/repositories/saved-search-repository.js';
+import { DrizzleSavedSearchMatchRepository } from '../infrastructure/db/repositories/saved-search-match-repository.js';
+import { ElasticEmailClient } from '../infrastructure/email/elastic-email-client.js';
+import { NullEmailSender } from '../infrastructure/email/null-email-sender.js';
+import { EvaluateAlerts } from '../application/alerts/evaluate-alerts.js';
+import type { EmailSender } from '../domain/email/email-sender.js';
 import { apiKeyLookup, publicRateLimiter } from './middleware/rate-limit.js';
 import { startVigenteCron, stopVigenteCron } from '../infrastructure/scheduler/vigente-cron.js';
 
@@ -143,6 +150,7 @@ export function createApp(dbClient: Db = db): Express {
   // Login accounts (PR12) — every route under /api/admin/* needs this to
   // check sessions, so it's built once here and threaded through.
   const userRepo = new DrizzleUserRepository(dbClient);
+  const savedSearchRepo = new DrizzleSavedSearchRepository(dbClient);
 
   // Health check (also serves as the DB liveness probe).
   app.get('/api/health', (_req: Request, res: Response) => {
@@ -163,6 +171,7 @@ export function createApp(dbClient: Db = db): Express {
   app.use('/api/admin', createAdminAuthRouter({ users: userRepo }));
   app.use('/api/admin/api-keys', createAdminApiKeysRouter({ repository: apiKeyRepo, users: userRepo }));
   app.use('/api/admin/users', createAdminUsersRouter({ users: userRepo }));
+  app.use('/api/admin/saved-searches', createAdminSavedSearchesRouter({ savedSearches: savedSearchRepo, users: userRepo }));
 
   // Public read API — baseline rate limit per IP, raised per-key when a
   // valid X-API-Key header resolves to an active admin-issued key (PR11).
@@ -202,8 +211,36 @@ export async function startServer(): Promise<{ app: Express; close: () => Promis
     console.log(`[backend] listening on :${env.PORT} (${env.NODE_ENV})`);
   });
 
+  // Alertas por email (PR13) — se evalúan tras cada scrape exitoso del cron.
+  const emailSender: EmailSender = env.ELASTIC_EMAIL_API_KEY
+    ? new ElasticEmailClient(env.ELASTIC_EMAIL_API_KEY, env.EMAIL_FROM)
+    : new NullEmailSender();
+  const evaluateAlerts = new EvaluateAlerts({
+    savedSearches: new DrizzleSavedSearchRepository(db),
+    matches: new DrizzleSavedSearchMatchRepository(db),
+    vigentes: new DrizzleVigenteRepository(db),
+    users: new DrizzleUserRepository(db),
+    email: emailSender,
+    baseUrl: env.CORS_ORIGIN,
+  });
+
   // Start the daily vigente scraper cron (configured via SCRAPE_CRON_*).
-  startVigenteCron();
+  startVigenteCron({
+    // scrapeRunStartedAt no se pasa a execute(): la frescura de un match se
+    // ancla a `search.createdAt` (instante fijo), no al inicio de la corrida
+    // (que avanza cada día) — ver evaluate-alerts.ts. `now` usa su default
+    // (new Date()) para la ventana de "cierre próximo".
+    onScrapeComplete: async () => {
+      try {
+        const summary = await evaluateAlerts.execute();
+        console.log(
+          `[alerts] evaluó ${summary.searchesEvaluated} búsqueda(s), notificó a ${summary.usersNotified} usuario(s) (${summary.eventsDetected} evento(s))`,
+        );
+      } catch (err) {
+        console.error('[alerts] falló la evaluación de alertas:', err);
+      }
+    },
+  });
 
   return {
     app,

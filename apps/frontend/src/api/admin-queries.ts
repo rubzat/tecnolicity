@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiGet, apiPost, apiPatch, apiDelete } from './client';
-import type { AdminSession, ApiKeySummary, ApiKeyCreated, UserSummary } from '../types';
+import type { AdminSession, ApiKeySummary, ApiKeyCreated, UserSummary, SavedSearch, SavedSearchFilters } from '../types';
 
 /** Session probe — powers the /admin route guard. Never throws on 401/etc:
  * the backend always answers 200 with `authenticated: false/true`. */
@@ -83,7 +83,7 @@ export function useUsers() {
 export function useCreateUser() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { username: string; password: string }) =>
+    mutationFn: (input: { username: string; password: string; email?: string }) =>
       apiPost<UserSummary>('/admin/users', input),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['admin', 'users'] });
@@ -94,7 +94,7 @@ export function useCreateUser() {
 export function useUpdateUser() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...patch }: { id: number; active?: boolean; password?: string }) =>
+    mutationFn: ({ id, ...patch }: { id: number; active?: boolean; password?: string; email?: string | null }) =>
       apiPatch<UserSummary>(`/admin/users/${id}`, patch),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['admin', 'users'] });
@@ -108,6 +108,45 @@ export function useDeleteUser() {
     mutationFn: (id: number) => apiDelete<void>(`/admin/users/${id}`),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['admin', 'users'] });
+    },
+  });
+}
+
+export function useSavedSearches() {
+  return useQuery({
+    queryKey: ['admin', 'saved-searches'],
+    queryFn: ({ signal }) => apiGet<{ data: SavedSearch[] }>('/admin/saved-searches', undefined, { signal }),
+  });
+}
+
+export function useCreateSavedSearch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { name: string; filters: SavedSearchFilters }) =>
+      apiPost<SavedSearch>('/admin/saved-searches', input),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['admin', 'saved-searches'] });
+    },
+  });
+}
+
+export function useUpdateSavedSearch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...patch }: { id: number; name?: string; filters?: SavedSearchFilters; active?: boolean }) =>
+      apiPatch<SavedSearch>(`/admin/saved-searches/${id}`, patch),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['admin', 'saved-searches'] });
+    },
+  });
+}
+
+export function useDeleteSavedSearch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => apiDelete<void>(`/admin/saved-searches/${id}`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['admin', 'saved-searches'] });
     },
   });
 }
