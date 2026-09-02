@@ -7,12 +7,17 @@ import {
   suppliers,
   procedures,
   contracts,
+  opportunitySegmentStats,
 } from '../../../db/schema/index.js';
 import { DrizzleOpportunityScoreRepository } from './opportunity-score-repository.js';
 
 const repo = new DrizzleOpportunityScoreRepository(db);
 const TEST_TIPO = '__TEST_TIPO_ADQUISICIONES__';
-const TEST_CLAVE = `__TEST_INST_${Date.now()}__`;
+const STAMP = Date.now();
+/** Código presupuestal de la institución — NO es la llave del segmento. */
+const TEST_CLAVE = `__TEST_INST_${STAMP}__`;
+/** Acrónimo de la institución — ESTA es la llave del segmento (ver Finding 1). */
+const TEST_SIGLAS = `__TEST_SIGLAS_${STAMP}__`;
 
 async function cleanup() {
   const rows = await db
@@ -27,6 +32,7 @@ async function cleanup() {
   await db.delete(purchasingUnits).where(eq(purchasingUnits.claveUc, `${TEST_CLAVE}-UC`));
   await db.delete(institutions).where(eq(institutions.claveInstitucion, TEST_CLAVE));
   await db.delete(suppliers).where(inArray(suppliers.rfc, [`${TEST_CLAVE}-S1`, `${TEST_CLAVE}-S2`]));
+  await db.delete(opportunitySegmentStats).where(eq(opportunitySegmentStats.tipoContratacion, TEST_TIPO));
 }
 
 beforeEach(async () => {
@@ -34,7 +40,7 @@ beforeEach(async () => {
 
   const [inst] = await db
     .insert(institutions)
-    .values({ claveInstitucion: TEST_CLAVE, nombreInstitucion: 'Institución de prueba', siglas: 'TEST' })
+    .values({ claveInstitucion: TEST_CLAVE, nombreInstitucion: 'Institución de prueba', siglas: TEST_SIGLAS })
     .returning();
   const [unit] = await db
     .insert(purchasingUnits)
@@ -71,7 +77,8 @@ afterAll(async () => {
 describe('DrizzleOpportunityScoreRepository', () => {
   it('computeRawSegmentAggregates calcula mediana, tamaño de muestra, proveedores distintos y dominancia', async () => {
     const rows = await repo.computeRawSegmentAggregates();
-    const segment = rows.find((r) => r.tipoContratacion === TEST_TIPO && r.siglasDependencia === TEST_CLAVE);
+    // El segmento se agrupa por `institutions.siglas`, no por `clave_institucion`.
+    const segment = rows.find((r) => r.tipoContratacion === TEST_TIPO && r.siglasDependencia === TEST_SIGLAS);
 
     expect(segment).toBeDefined();
     expect(segment!.sampleSize).toBe(3);
@@ -79,12 +86,15 @@ describe('DrizzleOpportunityScoreRepository', () => {
     expect(segment!.distinctSuppliers).toBe(2);
     // Proveedor 1 (S1) tiene 100+700=800 de 1000 totales -> 80%
     expect(segment!.dominantSupplierShare).toBeCloseTo(80, 1);
+
+    // Y NO existe ningún segmento llaveado con la clave presupuestal.
+    expect(rows.find((r) => r.siglasDependencia === TEST_CLAVE)).toBeUndefined();
   });
 
   it('upsertSegment escribe y findBySegment lee la fila normalizada', async () => {
     await repo.upsertSegment({
       tipoContratacion: TEST_TIPO,
-      siglasDependencia: TEST_CLAVE,
+      siglasDependencia: TEST_SIGLAS,
       sampleSize: 3,
       medianAmount: 200,
       amountScore: 55,
@@ -95,7 +105,7 @@ describe('DrizzleOpportunityScoreRepository', () => {
       score: 33,
     });
 
-    const found = await repo.findBySegment(TEST_TIPO, TEST_CLAVE);
+    const found = await repo.findBySegment(TEST_TIPO, TEST_SIGLAS);
     expect(found).not.toBeNull();
     expect(found!.score).toBe(33);
     expect(found!.isDominated).toBe(true);
@@ -104,7 +114,7 @@ describe('DrizzleOpportunityScoreRepository', () => {
   it('upsertSegment sobre el mismo segmento actualiza en vez de duplicar', async () => {
     await repo.upsertSegment({
       tipoContratacion: TEST_TIPO,
-      siglasDependencia: TEST_CLAVE,
+      siglasDependencia: TEST_SIGLAS,
       sampleSize: 3,
       medianAmount: 200,
       amountScore: 55,
@@ -116,7 +126,7 @@ describe('DrizzleOpportunityScoreRepository', () => {
     });
     await repo.upsertSegment({
       tipoContratacion: TEST_TIPO,
-      siglasDependencia: TEST_CLAVE,
+      siglasDependencia: TEST_SIGLAS,
       sampleSize: 4,
       medianAmount: 250,
       amountScore: 60,
@@ -127,7 +137,7 @@ describe('DrizzleOpportunityScoreRepository', () => {
       score: 56,
     });
 
-    const found = await repo.findBySegment(TEST_TIPO, TEST_CLAVE);
+    const found = await repo.findBySegment(TEST_TIPO, TEST_SIGLAS);
     expect(found!.sampleSize).toBe(4);
     expect(found!.score).toBe(56);
   });

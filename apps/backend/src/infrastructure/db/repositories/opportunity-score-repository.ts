@@ -35,11 +35,16 @@ export class DrizzleOpportunityScoreRepository implements OpportunityScoreReposi
   constructor(private readonly db: Db) {}
 
   async computeRawSegmentAggregates(): Promise<RawSegmentAggregate[]> {
-    // Estadísticas de segmento: tamaño de muestra, mediana, # de proveedores distintos.
+    // La llave del segmento es el ACRÓNIMO de la institución (`institutions.siglas`,
+    // p.ej. 'BUAP'), NO su código presupuestal (`clave_institucion`, p.ej. '080V26'):
+    // es `institutions.siglas` lo que corresponde a `vigente_procedures.siglas_dependencia`,
+    // contra el que se hace el LEFT JOIN en DrizzleVigenteRepository.list().
+    // `siglas` es nullable, así que se filtran los NULL: un segmento con siglas NULL
+    // jamás casaría con una vigente y sólo ensuciaría la normalización min-max.
     const segmentRows = await this.db
       .select({
         tipoContratacion: procedures.tipoContratacion,
-        claveInstitucion: institutions.claveInstitucion,
+        siglas: institutions.siglas,
         sampleSize: count(contracts.id),
         medianAmount: sql<string>`percentile_cont(0.5) WITHIN GROUP (ORDER BY ${contracts.importeDrc}::double precision)`,
         distinctSuppliers: countDistinct(contracts.supplierId),
@@ -48,19 +53,19 @@ export class DrizzleOpportunityScoreRepository implements OpportunityScoreReposi
       .innerJoin(procedures, eq(procedures.id, contracts.procedureId))
       .innerJoin(purchasingUnits, eq(purchasingUnits.id, procedures.purchasingUnitId))
       .innerJoin(institutions, eq(institutions.id, purchasingUnits.institutionId))
-      .where(sql`${procedures.tipoContratacion} IS NOT NULL`)
-      .groupBy(procedures.tipoContratacion, institutions.claveInstitucion);
+      .where(and(sql`${procedures.tipoContratacion} IS NOT NULL`, sql`${institutions.siglas} IS NOT NULL`))
+      .groupBy(procedures.tipoContratacion, institutions.siglas);
 
     // Dominancia: % del proveedor con más monto dentro de cada segmento.
     const ranked = this.db
       .select({
         tipoContratacion: procedures.tipoContratacion,
-        claveInstitucion: institutions.claveInstitucion,
+        siglas: institutions.siglas,
         supplierAmount: sql<string>`coalesce(sum(${contracts.importeDrc}), 0)`.as('supplier_amount'),
-        segmentTotalAmount: sql<string>`sum(sum(${contracts.importeDrc})) over (partition by ${procedures.tipoContratacion}, ${institutions.claveInstitucion})`.as(
+        segmentTotalAmount: sql<string>`sum(sum(${contracts.importeDrc})) over (partition by ${procedures.tipoContratacion}, ${institutions.siglas})`.as(
           'segment_total_amount',
         ),
-        rn: sql<number>`row_number() over (partition by ${procedures.tipoContratacion}, ${institutions.claveInstitucion} order by sum(${contracts.importeDrc}) desc nulls last)`.as(
+        rn: sql<number>`row_number() over (partition by ${procedures.tipoContratacion}, ${institutions.siglas} order by sum(${contracts.importeDrc}) desc nulls last)`.as(
           'rn',
         ),
       })
@@ -68,31 +73,43 @@ export class DrizzleOpportunityScoreRepository implements OpportunityScoreReposi
       .innerJoin(procedures, eq(procedures.id, contracts.procedureId))
       .innerJoin(purchasingUnits, eq(purchasingUnits.id, procedures.purchasingUnitId))
       .innerJoin(institutions, eq(institutions.id, purchasingUnits.institutionId))
-      .where(and(sql`${procedures.tipoContratacion} IS NOT NULL`, sql`${contracts.supplierId} IS NOT NULL`))
-      .groupBy(procedures.tipoContratacion, institutions.claveInstitucion, contracts.supplierId)
+      .where(
+        and(
+          sql`${procedures.tipoContratacion} IS NOT NULL`,
+          sql`${institutions.siglas} IS NOT NULL`,
+          sql`${contracts.supplierId} IS NOT NULL`,
+        ),
+      )
+      .groupBy(procedures.tipoContratacion, institutions.siglas, contracts.supplierId)
       .as('ranked');
 
     const dominanceRows = await this.db
       .select({
         tipoContratacion: ranked.tipoContratacion,
-        claveInstitucion: ranked.claveInstitucion,
+        siglas: ranked.siglas,
         dominantSharePct: sql<string>`round(100.0 * ${ranked.supplierAmount} / nullif(${ranked.segmentTotalAmount}, 0), 2)`,
       })
       .from(ranked)
       .where(eq(ranked.rn, 1));
 
-    const dominanceBySegment = new Map<string, number>();
+    // `dominantSharePct` es SQL NULL cuando el total del segmento es 0 —
+    // `Number(null)` sería 0, que el contrato del puerto distingue de null
+    // ("null si no hay proveedor con monto"), así que se preserva el null.
+    const dominanceBySegment = new Map<string, number | null>();
     for (const d of dominanceRows) {
-      dominanceBySegment.set(`${d.tipoContratacion}::${d.claveInstitucion}`, Number(d.dominantSharePct));
+      dominanceBySegment.set(
+        `${d.tipoContratacion}::${d.siglas}`,
+        d.dominantSharePct == null ? null : Number(d.dominantSharePct),
+      );
     }
 
     return segmentRows.map((r) => ({
       tipoContratacion: r.tipoContratacion!,
-      siglasDependencia: r.claveInstitucion,
+      siglasDependencia: r.siglas!,
       sampleSize: Number(r.sampleSize ?? 0),
       medianAmount: r.medianAmount == null ? 0 : Number(r.medianAmount),
       distinctSuppliers: Number(r.distinctSuppliers ?? 0),
-      dominantSupplierShare: dominanceBySegment.get(`${r.tipoContratacion}::${r.claveInstitucion}`) ?? null,
+      dominantSupplierShare: dominanceBySegment.get(`${r.tipoContratacion}::${r.siglas}`) ?? null,
     }));
   }
 

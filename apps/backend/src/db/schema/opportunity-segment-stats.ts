@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, numeric, boolean, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, integer, numeric, boolean, uniqueIndex } from 'drizzle-orm/pg-core';
 import { createdAt } from './_shared';
 
 /**
@@ -9,11 +9,15 @@ import { createdAt } from './_shared';
  * segmento — nunca truncate-then-insert, así un fallo a mitad de corrida
  * deja los segmentos ya procesados en su valor más reciente.
  *
- * `siglas_dependencia` corresponde a `institutions.clave_institucion` en el
- * dataset histórico y a `vigente_procedures.siglas_dependencia` en los datos
- * en vivo — el schema de `vigente_procedures` ya documenta esta
+ * `siglas_dependencia` corresponde a `institutions.siglas` (el ACRÓNIMO, p.ej.
+ * 'BUAP') en el dataset histórico y a `vigente_procedures.siglas_dependencia`
+ * en los datos en vivo — el schema de `vigente_procedures` ya documenta esta
  * correspondencia ("can be enriched later by joining siglas against the
  * institutions table").
+ *
+ * OJO: NO es `institutions.clave_institucion`, que es el código presupuestal
+ * de la institución ('080V26' para la misma BUAP) y jamás casaría con las
+ * siglas que trae la vigente.
  */
 export const opportunitySegmentStats = pgTable(
   'opportunity_segment_stats',
