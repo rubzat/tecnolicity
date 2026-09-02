@@ -16,6 +16,7 @@ function toRecord(row: typeof users.$inferSelect): UserRecord {
     id: row.id,
     username: row.username,
     passwordHash: row.passwordHash,
+    email: row.email,
     active: row.active,
     lastLoginAt: row.lastLoginAt,
     createdAt: row.createdAt,
@@ -40,10 +41,15 @@ export class DrizzleUserRepository implements UserRepository {
     return row ? toRecord(row) : null;
   }
 
+  async findById(id: number): Promise<UserRecord | null> {
+    const [row] = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
+    return row ? toRecord(row) : null;
+  }
+
   async create(input: CreateUserInput): Promise<UserRecord> {
     const [row] = await this.db
       .insert(users)
-      .values({ username: input.username, passwordHash: input.passwordHash })
+      .values({ username: input.username, passwordHash: input.passwordHash, email: input.email ?? null })
       .returning();
     return toRecord(row!);
   }
@@ -54,6 +60,7 @@ export class DrizzleUserRepository implements UserRepository {
       .set({
         ...(patch.active !== undefined ? { active: patch.active } : {}),
         ...(patch.passwordHash !== undefined ? { passwordHash: patch.passwordHash } : {}),
+        ...(patch.email !== undefined ? { email: patch.email } : {}),
       })
       .where(eq(users.id, id))
       .returning();

@@ -25,6 +25,8 @@ export interface VigenteRecord {
   direccionesAnuncio: string | null;
   entidadFederativa: string | null;
   scrapedAt: Date;
+  /** Cuándo se vio esta vigente por primera vez (PR13: detecta "nueva"). */
+  createdAt: Date;
 }
 
 /** Input shape for an upsert (natural key = numero_procedimiento). */
