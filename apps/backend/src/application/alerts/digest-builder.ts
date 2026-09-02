@@ -17,8 +17,16 @@ export interface Digest {
   html: string;
 }
 
+/**
+ * Link al listado público de oportunidades filtrado por el número de
+ * procedimiento. NO existe una ruta de detalle deep-linkable en el frontend
+ * (`/vigentes/:numero` solo existe como endpoint de la API), así que apuntamos
+ * a `/oportunidades?q=<numero>`: el filtro de texto libre `q` de esa página
+ * matchea `numero_procedimiento` por ILIKE, dejando (normalmente) un solo
+ * resultado a la vista.
+ */
 function vigenteUrl(baseUrl: string, numeroProcedimiento: string): string {
-  return `${baseUrl.replace(/\/$/, '')}/vigentes/${encodeURIComponent(numeroProcedimiento)}`;
+  return `${baseUrl.replace(/\/$/, '')}/oportunidades?q=${encodeURIComponent(numeroProcedimiento)}`;
 }
 
 function describeEvent(event: DigestEvent): string {

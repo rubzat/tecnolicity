@@ -29,8 +29,8 @@ describe('buildDigest', () => {
 
   it('incluye un link directo al detalle de la vigente en texto y HTML', () => {
     const digest = buildDigest([makeEvent()], 'https://tecnolicity.example');
-    expect(digest.text).toContain('https://tecnolicity.example/vigentes/AA-001-2026');
-    expect(digest.html).toContain('https://tecnolicity.example/vigentes/AA-001-2026');
+    expect(digest.text).toContain('https://tecnolicity.example/oportunidades?q=AA-001-2026');
+    expect(digest.html).toContain('https://tecnolicity.example/oportunidades?q=AA-001-2026');
   });
 
   it('describe un evento status_change con los valores from/to', () => {
@@ -53,7 +53,7 @@ describe('buildDigest', () => {
 
   it('quita la barra final de baseUrl al construir el link', () => {
     const digest = buildDigest([makeEvent()], 'https://tecnolicity.example/');
-    expect(digest.text).toContain('https://tecnolicity.example/vigentes/AA-001-2026');
-    expect(digest.text).not.toContain('example//vigentes');
+    expect(digest.text).toContain('https://tecnolicity.example/oportunidades?q=AA-001-2026');
+    expect(digest.text).not.toContain('example//oportunidades');
   });
 });

@@ -325,6 +325,26 @@ describe('EvaluateAlerts', () => {
     expect(await matches.findState(search.id, 1)).toBeNull();
   });
 
+  it('usuario desactivado: no se manda correo aunque tenga email, y el estado NO se persiste', async () => {
+    const { usecase, savedSearches, vigentes, users, email, matches } = makeDeps();
+    const user = await users.create({ username: 'ana', passwordHash: 'x', email: 'ana@example.com' });
+    // Baja de la cuenta: igual que UserRepository.update en producción. El resto
+    // del sistema re-chequea `active` en cada request (require-admin, GET /me);
+    // el cron corre fuera de ese middleware y debe respetar la misma revocación.
+    await users.update(user.id, { active: false });
+    const search = await savedSearches.create({ userId: user.id, name: 'Obra SICT', filters: { siglas: 'SICT' } });
+    search.createdAt = new Date('2026-01-01T00:00:00Z');
+    vigentes.rows.push(makeVigente({ id: 1, createdAt: new Date('2026-09-01T06:05:00Z') }));
+
+    const summary = await usecase.execute();
+
+    expect(summary.eventsDetected).toBe(1);
+    expect(summary.usersNotified).toBe(0);
+    expect(email.sent).toHaveLength(0);
+    // Sin persistir: si la cuenta se reactiva, el evento se vuelve a detectar.
+    expect(await matches.findState(search.id, 1)).toBeNull();
+  });
+
   it('fallo de envío: no se persiste el estado y no frena la evaluación de otros usuarios', async () => {
     const { usecase, savedSearches, vigentes, users, email, matches } = makeDeps();
     const failingUser = await users.create({ username: 'ana', passwordHash: 'x', email: 'ana@example.com' });

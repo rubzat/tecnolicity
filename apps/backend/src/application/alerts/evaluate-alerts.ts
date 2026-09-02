@@ -165,8 +165,13 @@ export class EvaluateAlerts {
   private async notifyUser(userId: number, pending: PendingEvent[]): Promise<boolean> {
     try {
       const user = await this.deps.users.findById(userId);
-      if (!user?.email) {
-        console.warn(`[alerts] usuario ${userId} tiene ${pending.length} evento(s) pendiente(s) pero no tiene email configurado — se omite`);
+      // `active` se re-chequea aquí igual que en require-admin/GET /me: una cuenta
+      // desactivada deja de ser servida de inmediato. Sin esto, las búsquedas
+      // guardadas de un usuario dado de baja seguirían mandándole digests para
+      // siempre (él no puede entrar a apagarlas y ningún admin las ve, por el
+      // scoping por dueño).
+      if (!user?.active || !user.email) {
+        console.warn(`[alerts] usuario ${userId} tiene ${pending.length} evento(s) pendiente(s) pero no tiene email configurado o la cuenta está desactivada — se omite`);
         return false;
       }
 

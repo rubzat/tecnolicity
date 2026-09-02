@@ -68,7 +68,7 @@ const envSchema = z.object({
   // alertas sigue corriendo pero los correos solo se loguean (ver
   // infrastructure/email/null-email-sender.ts).
   ELASTIC_EMAIL_API_KEY: z.string().optional(),
-  EMAIL_FROM: z.string().default('alertas@tecnolicity.mx'),
+  EMAIL_FROM: z.string().email().default('alertas@tecnolicity.mx'),
 });
 
 const parsed = envSchema.safeParse(process.env);
