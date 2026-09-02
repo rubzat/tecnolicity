@@ -576,6 +576,7 @@ export interface AdminSession {
   authenticated: boolean;
   username: string | null;
   user_id: number | null;
+  email: string | null;
 }
 
 export interface ApiKeySummary {
@@ -599,7 +600,27 @@ export interface ApiKeyCreated extends ApiKeySummary {
 export interface UserSummary {
   id: number;
   username: string;
+  email: string | null;
   active: boolean;
   last_login_at: string | null;
+  created_at: string;
+}
+
+// --- Admin: saved searches / alertas (PR13) ---
+
+export interface SavedSearchFilters {
+  tipo_contratacion?: string | null;
+  tipo_procedimiento?: string | null;
+  dependencia?: string | null;
+  siglas?: string | null;
+  entidad_federativa?: string | null;
+  q?: string | null;
+}
+
+export interface SavedSearch {
+  id: number;
+  name: string;
+  filters: SavedSearchFilters;
+  active: boolean;
   created_at: string;
 }
